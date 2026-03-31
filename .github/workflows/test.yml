@@ -1,0 +1,32 @@
+name: Test
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: e2e tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.x'
+          cache-dependency-path: |
+            network/go.sum
+            tests/go.sum
+
+      - name: Cache thor binary
+        uses: actions/cache@v4
+        with:
+          path: /tmp/thor_*
+          key: thor-binary-pedro-evm-2537-${{ hashFiles('network/setup/network.go') }}
+
+      - name: Run e2e tests
+        run: make test
