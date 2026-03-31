@@ -41,7 +41,7 @@ func Start() error {
 	// Write state file so that stop/status commands can find the process.
 	state := networkState{PID: os.Getpid(), Nodes: urls}
 	if data, err := json.Marshal(state); err == nil {
-		_ = os.WriteFile(stateFilePath, data, 0o644)
+		_ = os.WriteFile(stateFilePath, data, 0o600)
 	}
 
 	// Emit a single JSON line to stdout — TestMain reads this to get node URLs.
