@@ -1,97 +1,82 @@
-# Project<!-- Project Title -->
+# interstellar-e2e
 
-<!-- Find and replace elements that start with '<!--' and remove this line -->
+End-to-end tests for the VeChain **INTERSTELLAR** fork, which activates at block 1 in the test network.
 
-![Project Logo](project-logo.png)
+## EIPs covered
 
-## Introduction
+| Folder | EIP | Description |
+|--------|-----|-------------|
+| `tests/eip5656` | [EIP-5656](https://eips.ethereum.org/EIPS/eip-5656) | `MCOPY` opcode (0x5e) for in-memory copying |
+| `tests/eip7825` | [EIP-7825](https://eips.ethereum.org/EIPS/eip-7825) | Per-transaction gas limit cap (`MaxTxGasLimit = 1 << 24`) |
+| `tests/eip7883` | [EIP-7883](https://eips.ethereum.org/EIPS/eip-7883) | ModExp precompile repricing |
 
-A brief description of your project, its purpose, and main features.
+## Repository layout
 
-This is a template repository, that allows you to quickly create new repos with the following templates:
-1. [README.md](README.md)
-2. [CONTRIBUTING.md](CONTRIBUTING.md)
-3. [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
-4. [CODEOWNERS](CODEOWNERS)
-5. [LICENSE.md](LICENSE.md)
-
-Consider turning on branch protection for `main` as follows:
-1. Require a pull request before merging.
-  1. Require 1 approval.
-  2. Dismiss stale pull request approvals when new commits are pushed.
-  3. Require review from Code Owners.
-  4. Require approval of the most recent reviewable push.
-2. Require status checks to pass before merging.
-3. Require branches to be up to date before merging.
-4. Require conversation resolution before merging.
-5. Require deployments to succeed before merging.
-
-## Table of Contents
-
-- [Project](#project)
-  - [Introduction](#introduction)
-  - [Table of Contents](#table-of-contents)
-  - [Getting Started](#getting-started)
-    - [Prerequisites](#prerequisites)
-    - [Installation](#installation)
-    - [Configuration](#configuration)
-    - [Usage](#usage)
-    - [Documentation](#documentation)
-    - [Contributing](#contributing)
-    - [Roadmap](#roadmap)
-    - [Changelog](#changelog)
-    - [License](#license)
-    - [Credits](#credits)
-
-## Getting Started
-
-### Prerequisites
-
-List the required software, libraries, or tools needed to use or contribute to the project.
-
-### Installation
-
-Provide step-by-step instructions for installing the project, including any required dependencies.
-
-```bash
-# Example installation commands
+```
+interstellar-e2e/
+├── go.work                  # workspace linking this repo + local thor + networkhub
+├── Makefile
+├── network/                 # network binary (start/stop/status/node-url)
+│   ├── cmd/
+│   └── setup/               # 3-node genesis config with INTERSTELLAR at block 1
+└── tests/
+    ├── helper/              # shared test utilities (client, network lifecycle)
+    ├── eip5656/
+    ├── eip7825/
+    └── eip7883/
 ```
 
-### Configuration
+## Prerequisites
 
-Explain how to configure the project, if necessary.
+- Go 1.26+
+- A local checkout of [`vechain/thor`](https://github.com/vechain/thor) as a sibling of this repo (required by `go.work` until the INTERSTELLAR changes are published as a tagged release)
 
-### Usage
+```
+parent/
+├── interstellar-e2e/
+└── thor/
+```
 
-Include code examples or usage instructions to help users get started quickly.
+## Running the tests
 
-### Documentation
+```bash
+make test
+```
 
-Link to any additional documentation or tutorials, either within your repository or hosted externally.
+This builds the network binary, starts a 3-node local network, runs all test packages against it, then stops the network. On the first run, ThorBuilder clones and compiles thor — this can take ~15 minutes. Subsequent runs reuse the cached binary.
 
-### Contributing
+To run a single EIP package during development:
 
-Explain how others can contribute to the project. Include information on:
+```bash
+go test -v ./tests/eip7883/...
+```
 
-    How to submit bug reports or feature requests.
-    The process for submitting pull requests.
-    Any specific coding standards or guidelines.
-    The best way to get in touch with the maintainers, if needed.
-    
-You may use [a separate `CONTRIBUTING` file](CONTRIBUTING.md) to keep your `README.md` short.
+This starts its own network automatically (no `make` needed).
 
-### Roadmap
+## Makefile targets
 
-Share the project's development roadmap, if available, including planned features and improvements.
+| Target | Description |
+|--------|-------------|
+| `make test` | Build, start network, run all tests, stop |
+| `make build-network` | Compile the network binary to `/tmp/interstellar-network` |
+| `make stop` | Stop a running network |
+| `make status` | Show running network nodes and health |
+| `make clean` | Stop network and remove binary + state file |
 
-### Changelog
+## Environment variables
 
-Keep a log of all notable changes and updates in the project.
+| Variable | Description |
+|----------|-------------|
+| `NODE_URL` | Skip network start and use this node URL directly |
+| `THOR_EXISTING_PATH` | Use a pre-built thor binary instead of building from source |
+| `THOR_REPO` | Override the thor Git repo URL (default: `https://github.com/vechain/thor`) |
+| `THOR_BRANCH` | Override the thor branch (default: `pedro/eip-7883`) |
 
-### License
+## Pre-fork / post-fork testing
 
-This project is licensed under <!-- update the license name --> [the LICENSE](LICENSE.md).
+Each EIP test uses `InspectClauses` with a block revision to test behaviour on both sides of the fork boundary without mining new blocks:
 
-### Credits
+- `Revision("0")` — genesis block, INTERSTELLAR not yet active
+- `Revision("1")` — block 1, INTERSTELLAR active
 
-Recognize any significant contributors, sponsors, or organizations that have supported the project.
+EIP-7825 is an exception: its gas cap is enforced by the txpool and `PrepareTransaction`, not by `InspectClauses`, so those tests send real transactions and wait for inclusion.
