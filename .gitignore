@@ -1,0 +1,13 @@
+# Go
+*.test
+*.out
+coverage.html
+
+# Go workspace (local development only — not needed in CI)
+go.work
+go.work.sum
+
+# IDE
+.idea/
+.vscode/
+.claude/

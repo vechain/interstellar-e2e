@@ -1,0 +1,35 @@
+name: Lint
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  golangci:
+    name: golangci-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.x'
+          cache: false
+
+      - name: Lint network
+        uses: golangci/golangci-lint-action@4afd733a84b1f43292c63897423277bb7f4313a9 # v8
+        with:
+          version: v2.11.3
+          working-directory: network
+          args: --timeout=10m --config=../.golangci.yml
+          skip-cache: true
+
+      - name: Lint tests
+        uses: golangci/golangci-lint-action@4afd733a84b1f43292c63897423277bb7f4313a9 # v8
+        with:
+          version: v2.11.3
+          working-directory: tests
+          args: --timeout=10m --config=../.golangci.yml
+          skip-cache: true
