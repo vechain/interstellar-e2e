@@ -23,10 +23,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/vechain/thor/v2/api"
+	"github.com/vechain/thor/v2/block"
 	"github.com/vechain/thor/v2/thor"
 	"github.com/vechain/thor/v2/tx"
+	"github.com/vechain/thor/v2/vrf"
 
 	"github.com/vechain/interstellar-e2e/tests/helper"
 )
@@ -38,9 +42,9 @@ const (
 	// stays under the txpool's MaxTxSize (64 KB = 65,536 B).
 	txDataSize = 64_000
 
-	// numLargeTxs must exceed the ~130 that fit in one block by size, so the
-	// packer is forced to spill into a second block.
-	numLargeTxs = 150
+	targetSize       = maxRLPBlockSize + 1
+	baseTxCount      = 130
+	estimatedPadding = 30_000
 )
 
 // signers are the three pre-funded node accounts from LocalThreeNodesNetwork.
@@ -52,99 +56,135 @@ var signers = []*ecdsa.PrivateKey{
 	helper.Node3Key,
 }
 
+// TestEIP7934 constructs a validly-signed block whose RLP
+// encoding exceeds MaxRLPBlockSize and disseminates it to a running Thor node
+// via the devp2p MsgNewBlock message. The consensus validator (validateBlockBody)
+// must reject it at the size check, so the block must NOT appear in the chain.
 func TestEIP7934(t *testing.T) {
 	client := helper.NewClient(nodeURL)
 
-	chainTag, err := client.ChainTag()
-	require.NoError(t, err)
-	best, err := client.Block("best")
+	genesis, err := client.Block("0")
 	require.NoError(t, err)
 
-	to := thor.BytesToAddress([]byte{0xde, 0xad})
-	intrinsicGas := uint64(21_000 + txDataSize*4) // 4 is the gas cost per zero byte of calldata
-	baseNonce := uint64(time.Now().UnixNano())
+	// Wait for a fresh block so we can copy its already-validated scheduling.
+	initialBest, err := client.Block("best")
+	require.NoError(t, err)
 
-	txIDs := make([]*thor.Bytes32, numLargeTxs)
-	for i := range numLargeTxs {
-		clause := tx.NewClause(&to).WithData(make([]byte, txDataSize))
+	var observed *api.JSONCollapsedBlock
+	deadline := time.Now().Add(30 * time.Second)
+	for time.Now().Before(deadline) {
+		b, err := client.Block("best")
+		require.NoError(t, err)
+		if b.Number > initialBest.Number {
+			observed = b
+			break
+		}
+		time.Sleep(time.Second)
+	}
+	require.NotNil(t, observed, "must observe a new block within timeout")
+
+	// Identify which of our keys signed the observed block.
+	var proposerKey *ecdsa.PrivateKey
+	for _, key := range signers {
+		addr := thor.Address(crypto.PubkeyToAddress(key.PublicKey))
+		if addr == observed.Signer {
+			proposerKey = key
+			break
+		}
+	}
+	require.NotNil(t, proposerKey,
+		"observed block signer %s must match one of our known keys", observed.Signer)
+
+	// Fetch the observed block's full header for Alpha and BaseFee.
+	observedHeader, err := helper.FetchRawBlockHeader(nodeURL, fmt.Sprintf("%d", observed.Number))
+	require.NoError(t, err)
+
+	alpha := observedHeader.Alpha()
+	require.NotEmpty(t, alpha, "post-VIP214 block must carry Alpha")
+
+	// Build a block that is exactly MaxRLPBlockSize + 1 bytes. We use
+	// baseTxCount full-size transactions plus one "padding" transaction
+	// whose data length is calibrated to land on the exact byte target.
+	// Within the 56–65535 data-length range each extra byte of tx data
+	// adds exactly one byte to the block's RLP size, so a single
+	// probe-and-adjust pass is enough.
+	buildBlock := func(paddingDataLen int) *block.Block {
+		b := new(block.Builder).
+			ParentID(observed.ParentID).
+			Timestamp(observed.Timestamp).
+			GasLimit(observed.GasLimit).
+			TotalScore(observed.TotalScore).
+			GasUsed(0).
+			Beneficiary(observed.Beneficiary).
+			StateRoot(thor.Bytes32{}).
+			ReceiptsRoot(thor.Bytes32{}).
+			TransactionFeatures(tx.DelegationFeature).
+			Alpha(alpha).
+			BaseFee(observedHeader.BaseFee())
+
+		for i := range baseTxCount {
+			clause := tx.NewClause(nil).WithData(make([]byte, txDataSize))
+			trx := tx.NewBuilder(tx.TypeLegacy).
+				Clause(clause).
+				Gas(21_000).
+				Nonce(uint64(i)).
+				Build()
+			b.Transaction(trx)
+		}
+
+		clause := tx.NewClause(nil).WithData(make([]byte, paddingDataLen))
 		trx := tx.NewBuilder(tx.TypeLegacy).
-			ChainTag(chainTag).
 			Clause(clause).
-			Gas(intrinsicGas).
-			BlockRef(tx.NewBlockRefFromID(best.ID)).
-			Expiration(100).
-			Nonce(baseNonce + uint64(i)).
+			Gas(21_000).
+			Nonce(uint64(baseTxCount)).
 			Build()
+		b.Transaction(trx)
 
-		signer := signers[i%len(signers)]
-		signed, err := tx.Sign(trx, signer)
+		return b.Build()
+	}
+
+	signBlock := func(blk *block.Block) *block.Block {
+		ecSig, err := crypto.Sign(blk.Header().SigningHash().Bytes(), proposerKey)
 		require.NoError(t, err)
-
-		result, err := client.SendTransaction(signed)
-		require.NoError(t, err, "tx %d must be accepted by the txpool", i)
-		txIDs[i] = result.ID
-	}
-
-	// Collect receipts and group by block number.
-	blockTxCount := make(map[uint32]int)
-	for i, txID := range txIDs {
-		receipt := helper.WaitForReceipt(t, client, txID, 120*time.Second)
-		require.NotNil(t, receipt, "tx %d must be mined", i)
-		blockTxCount[receipt.Meta.BlockNumber]++
-	}
-
-	// Query the RLP size of every block that included our transactions.
-	type blockInfo struct {
-		number uint32
-		size   uint32
-		txs    int
-	}
-	blocks := make([]blockInfo, 0, len(blockTxCount))
-	for num, count := range blockTxCount {
-		blk, err := client.Block(fmt.Sprintf("%d", num))
+		_, proof, err := vrf.Prove(proposerKey, alpha)
 		require.NoError(t, err)
-		blocks = append(blocks, blockInfo{number: num, size: blk.Size, txs: count})
+		sig, err := block.NewComplexSignature(ecSig, proof)
+		require.NoError(t, err)
+		return blk.WithSignature(sig)
 	}
 
-	// --- BlockSizeAboveMax: the packer must not stuff all txs in one block ---
-	t.Run("BlockSizeAboveMax", func(t *testing.T) {
-		// 150 txs × ~64 KB ≈ 9.6 MiB, well over the 8 MiB cap.
-		// The packer should have split them across at least two blocks.
-		require.Greater(t, len(blocks), 1,
-			"packer should split %d large txs across multiple blocks", numLargeTxs)
+	probe := signBlock(buildBlock(estimatedPadding))
+	probeSize := uint64(probe.Size())
 
-		// Every block must honour the cap.
-		for _, b := range blocks {
-			assert.LessOrEqual(t, uint64(b.size), maxRLPBlockSize,
-				"block %d: size %d exceeds MaxRLPBlockSize %d", b.number, b.size, maxRLPBlockSize)
-		}
-	})
+	adjustedPadding := int(estimatedPadding) + int(targetSize) - int(probeSize)
+	require.Greater(t, adjustedPadding, 0, "padding calculation must yield positive data size")
 
-	// --- BlockSizeMatchingMax: the fullest block should approach the cap ---
-	t.Run("BlockSizeMatchingMax", func(t *testing.T) {
-		// The packer fills each block as close to 8 MiB as possible.  The
-		// fullest block should use at least 50% of the cap.  In practice it
-		// reaches ~99% (≈130 txs × 64 KB ≈ 8.3 MiB), but we use a conservative
-		// threshold to avoid flakiness from block-timing variance.
-		var maxSize uint32
-		for _, b := range blocks {
-			if b.size > maxSize {
-				maxSize = b.size
-			}
-		}
-		assert.Greater(t, uint64(maxSize), maxRLPBlockSize/2,
-			"largest block (%d B) should be at least 50%% of MaxRLPBlockSize", maxSize)
-	})
+	oversized := signBlock(buildBlock(adjustedPadding))
 
-	// --- BlockSizeBelowMax: a normal small tx works fine ---
-	t.Run("BlockSizeBelowMax", func(t *testing.T) {
-		trx := helper.BuildTx(t, client, 21_000, helper.ZeroClause())
-		result, err := client.SendTransaction(trx)
+	require.Equal(t, targetSize, uint64(oversized.Size()),
+		"block must be exactly MaxRLPBlockSize + 1")
+	require.NotEqual(t, thor.Bytes32{}, oversized.Header().ID(),
+		"block ID must be non-zero (valid signature)")
 
-		require.NoError(t, err, "normal-sized tx must be accepted")
-		require.NotNil(t, result.ID)
+	// Connect via P2P and send the oversized block.
+	p2pClient := helper.NewThorP2PClient(genesis.ID, observed.ParentID, observed.TotalScore-1)
+	err = p2pClient.Connect(helper.TestSenderKey, helper.Node1P2PPort)
+	require.NoError(t, err, "P2P connection to node1 must succeed")
+	defer p2pClient.Stop()
 
-		receipt := helper.WaitForReceipt(t, client, result.ID, 30*time.Second)
-		assert.False(t, receipt.Reverted)
-	})
+	err = p2pClient.SendBlock(oversized)
+	require.NoError(t, err, "sending oversized block via P2P must not error at the transport level")
+
+	// Give the node time to process the block and continue producing.
+	time.Sleep(30 * time.Second)
+
+	blockID := oversized.Header().ID()
+	found, _ := client.Block(blockID.String())
+	assert.Nil(t, found,
+		"oversized block (ID %s) must NOT be accepted into the chain", blockID)
+
+	newBest, err := client.Block("best")
+	require.NoError(t, err)
+	assert.Greater(t, newBest.Number, observed.Number,
+		"node must continue producing blocks after rejecting the oversized P2P block")
 }

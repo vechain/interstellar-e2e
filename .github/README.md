@@ -8,7 +8,7 @@ End-to-end tests for the VeChain **INTERSTELLAR** fork, which activates at block
 |--------|-----|-------------|
 | `tests/eip5656` | [EIP-5656](https://eips.ethereum.org/EIPS/eip-5656) | `MCOPY` opcode (0x5e) for in-memory copying |
 | `tests/eip7825` | [EIP-7825](https://eips.ethereum.org/EIPS/eip-7825) | Per-transaction gas limit cap (`MaxTxGasLimit = 1 << 24`) |
-| `tests/eip7934` | [EIP-7934](https://eips.ethereum.org/EIPS/eip-7934) | Max RLP-encoded block size (`MaxRLPBlockSize = 8_388_608`); burst of large txs proves packer splits across blocks |
+| `tests/eip7934` | [EIP-7934](https://eips.ethereum.org/EIPS/eip-7934) | Max RLP-encoded block size (`MaxRLPBlockSize = 8_388_608`); packer-level split test + P2P consensus-level rejection of oversized blocks |
 | `tests/eip7883` | [EIP-7883](https://eips.ethereum.org/EIPS/eip-7883) | ModExp precompile repricing |
 
 ## Repository layout
@@ -82,4 +82,4 @@ Each EIP test uses `InspectClauses` with a block revision to test behaviour on b
 - `Revision("0")` — genesis block, INTERSTELLAR not yet active
 - `Revision("1")` — block 1, INTERSTELLAR active
 
-EIP-7825 and EIP-7934 are exceptions: their checks are enforced on transaction submission/packing paths, not by `InspectClauses`, so those tests send real transactions and assert submission/inclusion behaviour.
+EIP-7825 and EIP-7934 are exceptions: their checks are enforced on transaction submission/packing paths, not by `InspectClauses`, so those tests send real transactions and assert submission/inclusion behaviour. EIP-7934 additionally tests the **consensus-layer** rejection path by connecting to a node via devp2p and sending a validly-signed block whose RLP size exceeds the limit.
