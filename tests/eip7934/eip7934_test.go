@@ -25,10 +25,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/vechain/interstellar-e2e/tests/helper"
 	"github.com/vechain/thor/v2/thor"
 	"github.com/vechain/thor/v2/tx"
+
+	"github.com/vechain/interstellar-e2e/tests/helper"
 )
 
 const (

@@ -28,12 +28,12 @@ const (
 	PostForkRevision = "1"
 )
 
-// TestSenderKey is the default signing key (node 1) used across all tests.
-var TestSenderKey, _ = crypto.HexToECDSA(node1Key)
-
-// Node2Key and Node3Key are the signing keys for nodes 2 and 3.
-var Node2Key, _ = crypto.HexToECDSA(node2Key)
-var Node3Key, _ = crypto.HexToECDSA(node3Key)
+// Signing keys for all three pre-funded node accounts.
+var (
+	TestSenderKey, _ = crypto.HexToECDSA(node1Key)
+	Node2Key, _      = crypto.HexToECDSA(node2Key)
+	Node3Key, _      = crypto.HexToECDSA(node3Key)
+)
 
 // NewClient returns a thorclient pointed at the given node URL.
 func NewClient(nodeURL string) *thorclient.Client {

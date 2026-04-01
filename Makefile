@@ -1,4 +1,4 @@
-.PHONY: build-network test clean stop status
+.PHONY: build-network test clean stop status lint
 
 build-network:
 	cd network && go build -o /tmp/interstellar-network github.com/vechain/interstellar-e2e/network && cd ..
@@ -19,3 +19,7 @@ status:
 
 clean: stop
 	rm -f /tmp/interstellar-network /tmp/interstellar-network.json
+
+lint:
+	cd network && golangci-lint run --timeout=10m --config=../.golangci.yml
+	cd tests && golangci-lint run --timeout=10m --config=../.golangci.yml
