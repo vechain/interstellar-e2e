@@ -13,9 +13,12 @@ import (
 	"github.com/vechain/thor/v2/tx"
 )
 
-// node1Key is the private key for Node 1's master address (0x61fF580B63D3845934610222245C116E013717ec).
-// This account is pre-funded with a large balance in LocalThreeNodesNetwork genesis.
-const node1Key = "01a4107bfb7d5141ec519e75788c34295741a1eefbfe460320efd2ada944071e"
+// Private keys for the three master accounts pre-funded in LocalThreeNodesNetwork genesis.
+const (
+	node1Key = "01a4107bfb7d5141ec519e75788c34295741a1eefbfe460320efd2ada944071e" // 0x61fF580B63D3845934610222245C116E013717ec
+	node2Key = "7072249b800ddac1d29a3cd06468cc1a917cbcd110dde358a905d03dad51748d" // 0x327931085B4cCbCE0baABb5a5E1C678707C51d90
+	node3Key = "c55455943bf026dc44fcf189e8765eb0587c94e66029d580bae795386c0b737a" // 0x084E48c8AE79656D7e27368AE5317b5c2D6a7497
+)
 
 // PreForkRevision targets block 0 (genesis), which is before INTERSTELLAR activates.
 // PostForkRevision targets block 1, the block at which INTERSTELLAR activates.
@@ -25,8 +28,12 @@ const (
 	PostForkRevision = "1"
 )
 
-// TestSenderKey is the signing key used across all tests.
+// TestSenderKey is the default signing key (node 1) used across all tests.
 var TestSenderKey, _ = crypto.HexToECDSA(node1Key)
+
+// Node2Key and Node3Key are the signing keys for nodes 2 and 3.
+var Node2Key, _ = crypto.HexToECDSA(node2Key)
+var Node3Key, _ = crypto.HexToECDSA(node3Key)
 
 // NewClient returns a thorclient pointed at the given node URL.
 func NewClient(nodeURL string) *thorclient.Client {
