@@ -2,6 +2,25 @@ name: Test
 
 on:
   push:
+  workflow_dispatch:
+    inputs:
+      thor-branch:
+        description: 'Thor branch to test against'
+        required: true
+        default: 'evm-upgrades'
+      thor-repo:
+        description: 'Thor repository (owner/repo)'
+        required: false
+        default: 'vechain/thor'
+  workflow_call:
+    inputs:
+      thor-branch:
+        type: string
+        required: false
+      thor-repo:
+        type: string
+        required: false
+        default: vechain/thor
 
 permissions:
   contents: read
@@ -26,7 +45,10 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /tmp/thor_*
-          key: thor-binary-pedro-evm-2537-${{ hashFiles('network/setup/network.go') }}
+          key: thor-binary-${{ inputs.thor-branch || github.ref_name }}-${{ hashFiles('network/setup/network.go') }}
 
       - name: Run e2e tests
         run: make test
+        env:
+          THOR_REPO: https://github.com/${{ inputs.thor-repo || 'vechain/thor' }}
+          THOR_BRANCH: ${{ inputs.thor-branch || '' }}
