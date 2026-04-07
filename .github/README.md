@@ -8,6 +8,7 @@ End-to-end tests for the VeChain **INTERSTELLAR** fork, which activates at block
 |--------|-----|-------------|
 | `tests/eip5656` | [EIP-5656](https://eips.ethereum.org/EIPS/eip-5656) | `MCOPY` opcode (0x5e) for in-memory copying |
 | `tests/eip7825` | [EIP-7825](https://eips.ethereum.org/EIPS/eip-7825) | Per-transaction gas limit cap (`MaxTxGasLimit = 1 << 24`) |
+| `tests/eip7823` | [EIP-7823](https://eips.ethereum.org/EIPS/eip-7823) | ModExp upper bound (1024-byte limit on base/exp/mod) |
 | `tests/eip7883` | [EIP-7883](https://eips.ethereum.org/EIPS/eip-7883) | ModExp precompile repricing |
 
 ## Repository layout
@@ -22,6 +23,7 @@ interstellar-e2e/
 └── tests/
     ├── helper/              # shared test utilities (client, network lifecycle)
     ├── eip5656/
+    ├── eip7823/
     ├── eip7825/
     └── eip7883/
 ```
