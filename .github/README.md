@@ -17,7 +17,7 @@ End-to-end tests for the VeChain **INTERSTELLAR** fork, which activates at block
 interstellar-e2e/
 ├── go.work                  # workspace linking this repo + local thor + networkhub
 ├── Makefile
-├── network/                 # network binary (start/stop/status/node-url)
+├── network/                 # network binary (start/stop/status/node-url/node-p2p-port)
 │   ├── cmd/
 │   └── setup/               # 3-node genesis config with INTERSTELLAR at block 1
 └── tests/
@@ -71,6 +71,7 @@ This starts its own network automatically (no `make` needed).
 | Variable | Description |
 |----------|-------------|
 | `NODE_URL` | Skip network start and use this node URL directly |
+| `NODE_P2P_PORT` | Passed automatically by `make test`; set it manually only for P2P-based tests such as `tests/eip7934` when `NODE_URL` points to an already-running external node |
 | `THOR_EXISTING_PATH` | Use a pre-built thor binary instead of building from source |
 | `THOR_REPO` | Override the thor Git repo URL (default: `https://github.com/vechain/thor`) |
 | `THOR_BRANCH` | Override the thor branch (default: `pedro/eip-7883`) |

@@ -168,7 +168,7 @@ func TestEIP7934(t *testing.T) {
 
 	// Connect via P2P and send the oversized block.
 	p2pClient := helper.NewThorP2PClient(genesis.ID, observed.ParentID, observed.TotalScore-1)
-	err = p2pClient.Connect(helper.TestSenderKey, helper.Node1P2PPort)
+	err = p2pClient.Connect(helper.TestSenderKey, nodeP2PPort)
 	require.NoError(t, err, "P2P connection to node1 must succeed")
 	defer p2pClient.Stop()
 

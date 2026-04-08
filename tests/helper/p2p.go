@@ -24,9 +24,6 @@ import (
 	"github.com/vechain/thor/v2/tx"
 )
 
-// Taken from LocalThreeNodesNetwork
-const Node1P2PPort = 8031
-
 // ThorP2PClient connects to a running Thor node via devp2p (RLPx)
 // using the thor/1 sub-protocol and allows sending raw blocks.
 type ThorP2PClient struct {
@@ -131,15 +128,6 @@ func (c *ThorP2PClient) protocolHandler(peer *p2p.Peer, rw p2p.MsgReadWriter) er
 	c.peerRPC = r
 	c.mu.Unlock()
 
-	go func() {
-		time.Sleep(3 * time.Second)
-		select {
-		case <-c.peerReady:
-		default:
-			close(c.peerReady)
-		}
-	}()
-
 	return r.Serve(func(msg *p2p.Msg, write func(any)) error {
 		switch msg.Code {
 		case proto.MsgGetStatus:
@@ -152,6 +140,11 @@ func (c *ThorP2PClient) protocolHandler(peer *p2p.Peer, rw p2p.MsgReadWriter) er
 				BestBlockID:    c.bestID,
 				TotalScore:     c.bestScore,
 			})
+			select {
+			case <-c.peerReady:
+			default:
+				close(c.peerReady)
+			}
 		case proto.MsgGetTxs:
 			if err := msg.Decode(&struct{}{}); err != nil {
 				return err

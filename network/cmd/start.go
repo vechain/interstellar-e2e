@@ -34,18 +34,26 @@ func Start() error {
 	}
 
 	urls := make([]string, len(net.Nodes))
+	p2pPorts := make([]int, len(net.Nodes))
 	for i, n := range net.Nodes {
 		urls[i] = n.GetHTTPAddr()
+		p2pPorts[i] = n.GetP2PListenPort()
 	}
 
 	// Write state file so that stop/status commands can find the process.
-	state := networkState{PID: os.Getpid(), Nodes: urls}
+	state := networkState{PID: os.Getpid(), Nodes: urls, P2PPorts: p2pPorts}
 	if data, err := json.Marshal(state); err == nil {
 		_ = os.WriteFile(stateFilePath, data, 0o600)
 	}
 
-	// Emit a single JSON line to stdout — TestMain reads this to get node URLs.
-	ready, _ := json.Marshal(map[string][]string{"nodes": urls})
+	// Emit a single JSON line to stdout — TestMain reads this to get node connection details.
+	ready, _ := json.Marshal(struct {
+		Nodes    []string `json:"nodes"`
+		P2PPorts []int    `json:"p2pPorts"`
+	}{
+		Nodes:    urls,
+		P2PPorts: p2pPorts,
+	})
 	fmt.Println(string(ready))
 
 	slog.Info("Network ready", "nodes", urls)
