@@ -9,7 +9,7 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: interstellar-network <start|stop|status|node-url>")
+		fmt.Fprintln(os.Stderr, "usage: interstellar-network <start|stop|status|node-url|node-p2p-port>")
 		os.Exit(1)
 	}
 
@@ -23,6 +23,8 @@ func main() {
 		err = cmd.Status()
 	case "node-url":
 		err = cmd.NodeURL()
+	case "node-p2p-port":
+		err = cmd.NodeP2PPort()
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n", os.Args[1])
 		os.Exit(1)
