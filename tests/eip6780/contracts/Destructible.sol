@@ -10,6 +10,9 @@ pragma solidity ^0.8.24;
 ///         - If called on a contract **created in the same transaction**: the
 ///           contract is fully deleted (code + storage removed).
 contract Destructible {
+    /// @notice Allow plain VET transfers into the contract so it can hold a balance.
+    receive() external payable {}
+
     /// @notice Transfer this contract's balance to `recipient` via SELFDESTRUCT.
     /// @param recipient The address that receives the balance.
     function destroy(address payable recipient) external {
