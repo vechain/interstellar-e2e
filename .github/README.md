@@ -8,6 +8,7 @@ End-to-end tests for the VeChain **INTERSTELLAR** fork, which activates at block
 |--------|-----|-------------|
 | `tests/eip5656` | [EIP-5656](https://eips.ethereum.org/EIPS/eip-5656) | `MCOPY` opcode (0x5e) for in-memory copying |
 | `tests/eip7825` | [EIP-7825](https://eips.ethereum.org/EIPS/eip-7825) | Per-transaction gas limit cap (`MaxTxGasLimit = 1 << 24`) |
+| `tests/eip7934` | [EIP-7934](https://eips.ethereum.org/EIPS/eip-7934) | Max RLP-encoded block size (`MaxRLPBlockSize = 8_388_608`); packer-level split test + P2P consensus-level rejection of oversized blocks |
 | `tests/eip7883` | [EIP-7883](https://eips.ethereum.org/EIPS/eip-7883) | ModExp precompile repricing |
 | `tests/eip7939` | [EIP-7939](https://eips.ethereum.org/EIPS/eip-7939) | `CLZ` opcode (0x1e) — count leading zeros |
 
@@ -17,7 +18,7 @@ End-to-end tests for the VeChain **INTERSTELLAR** fork, which activates at block
 interstellar-e2e/
 ├── go.work                  # workspace linking this repo + local thor + networkhub
 ├── Makefile
-├── network/                 # network binary (start/stop/status/node-url)
+├── network/                 # network binary (start/stop/status/node-url/node-p2p-port)
 │   ├── cmd/
 │   └── setup/               # 3-node genesis config with INTERSTELLAR at block 1
 └── tests/
@@ -51,6 +52,7 @@ To run a single EIP package during development:
 
 ```bash
 go test -v ./tests/eip7883/...
+go test -v ./tests/eip7934/...
 ```
 
 This starts its own network automatically (no `make` needed).
@@ -70,6 +72,7 @@ This starts its own network automatically (no `make` needed).
 | Variable | Description |
 |----------|-------------|
 | `NODE_URL` | Skip network start and use this node URL directly |
+| `NODE_P2P_PORT` | Passed automatically by `make test`; set it manually only for P2P-based tests such as `tests/eip7934` when `NODE_URL` points to an already-running external node |
 | `THOR_EXISTING_PATH` | Use a pre-built thor binary instead of building from source |
 | `THOR_REPO` | Override the thor Git repo URL (default: `https://github.com/vechain/thor`) |
 | `THOR_BRANCH` | Override the thor branch (default: `pedro/eip-7883`) |
@@ -81,4 +84,4 @@ Each EIP test uses `InspectClauses` with a block revision to test behaviour on b
 - `Revision("0")` — genesis block, INTERSTELLAR not yet active
 - `Revision("1")` — block 1, INTERSTELLAR active
 
-EIP-7825 is an exception: its gas cap is enforced by the txpool and `PrepareTransaction`, not by `InspectClauses`, so those tests send real transactions and wait for inclusion.
+EIP-7825 and EIP-7934 are exceptions: their checks are enforced on transaction submission/packing paths, not by `InspectClauses`, so those tests send real transactions and assert submission/inclusion behaviour. EIP-7934 additionally tests the **consensus-layer** rejection path by connecting to a node via devp2p and sending a validly-signed block whose RLP size exceeds the limit.
