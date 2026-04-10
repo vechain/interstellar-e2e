@@ -26,13 +26,13 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/vechain/interstellar-e2e/tests/eip6780/contracts/generated/destructible"
-	"github.com/vechain/interstellar-e2e/tests/eip6780/contracts/generated/factory"
 	"github.com/vechain/thor/v2/api"
 	"github.com/vechain/thor/v2/thor"
 	"github.com/vechain/thor/v2/thorclient"
 	"github.com/vechain/thor/v2/tx"
 
+	"github.com/vechain/interstellar-e2e/tests/eip6780/contracts/generated/destructible"
+	"github.com/vechain/interstellar-e2e/tests/eip6780/contracts/generated/factory"
 	"github.com/vechain/interstellar-e2e/tests/helper"
 )
 
