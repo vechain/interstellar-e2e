@@ -1,4 +1,4 @@
-package eip7883
+package eip7939
 
 import (
 	"os"

@@ -16,9 +16,10 @@ const (
 	startupTimeout = 15 * time.Minute // allows for ThorBuilder clone + compile on first run
 )
 
-// NetworkInfo holds node URLs emitted by the network binary on startup.
+// NetworkInfo holds node connection details emitted by the network binary on startup.
 type NetworkInfo struct {
-	Nodes []string `json:"nodes"`
+	Nodes    []string `json:"nodes"`
+	P2PPorts []int    `json:"p2pPorts"`
 }
 
 // BuildNetworkBinary compiles the network/ module to a binary.
