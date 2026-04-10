@@ -10,8 +10,10 @@ import (
 )
 
 const (
-	defaultThorRepo   = "https://github.com/vechain/thor"
-	defaultThorBranch = "evm-upgrades"
+	defaultThorRepo = "https://github.com/vechain/thor"
+	// defaultThorBranch points to the branch containing EIP-6780 (opSuicide6780).
+	// Update to "evm-upgrades" once vechain/thor#1590 is merged.
+	defaultThorBranch = "moglu/eip6780"
 )
 
 // BuildNetwork constructs the 3-node network configuration for interstellar testing.

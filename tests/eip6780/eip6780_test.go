@@ -234,7 +234,9 @@ func TestEIP6780_PostFork_SelfDestructToSelfIsNoop(t *testing.T) {
 	contractAddr := *deployReceipt.Outputs[0].ContractAddress
 
 	// Step 2: Fund the contract with 1 VET so we can assert balance stability (Tx 2).
-	fundTx := helper.BuildTx(t, client, 21_000,
+	// Use 50_000 gas — 21_000 (the base clause cost) is not enough because calling
+	// receive() has additional EVM execution cost (~21055 used in practice).
+	fundTx := helper.BuildTx(t, client, 50_000,
 		tx.NewClause(&contractAddr).WithValue(big.NewInt(1e18)),
 	)
 	fundResult, err := client.SendTransaction(fundTx)
