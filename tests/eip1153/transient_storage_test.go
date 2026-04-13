@@ -312,7 +312,7 @@ func TestTransientStorage_ClearedBetweenTransactions(t *testing.T) {
 		},
 		Gas: 100_000,
 	}
-	results, err := client.InspectClauses(tloadCallData, thorclient.Revision("best"))
+	results, err := client.InspectClauses(tloadCallData, thorclient.Revision(tstoreReceipt.Meta.BlockID.String()))
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	assert.False(t, results[0].Reverted,
