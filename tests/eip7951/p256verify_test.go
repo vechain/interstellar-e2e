@@ -131,21 +131,35 @@ func TestEIP7951_GasCost(t *testing.T) {
 }
 
 func TestEIP7951_WrongInputLength(t *testing.T) {
-	// Input shorter than 160 bytes → precompile returns nil (empty), no revert.
-	shortInput := validP256Input[:100]
+	// EIP-7951 Run() requires exactly 160 bytes; any other length returns nil (empty), no revert.
+	// RequiredGas always charges 6900 regardless of input length.
 	client := helper.NewClient(nodeURL)
-	callData := &api.BatchCallData{
-		Clauses: api.Clauses{{To: &p256VerifyAddr, Data: "0x" + hex.EncodeToString(shortInput)}},
-		Gas:     10_000,
-	}
 
-	t.Run("post-fork", func(t *testing.T) {
+	assertWrongLength := func(t *testing.T, input []byte, label string) {
+		t.Helper()
+		callData := &api.BatchCallData{
+			Clauses: api.Clauses{{To: &p256VerifyAddr, Data: "0x" + hex.EncodeToString(input)}},
+			Gas:     10_000,
+		}
 		results, err := client.InspectClauses(callData, thorclient.Revision(helper.PostForkRevision))
 		require.NoError(t, err)
 		require.Len(t, results, 1)
-		assert.False(t, results[0].Reverted, "wrong-length input must not revert")
+		assert.False(t, results[0].Reverted, "%s: must not revert", label)
 		assert.Empty(t, strings.TrimPrefix(results[0].Data, "0x"),
-			"wrong-length input must return empty output")
+			"%s: must return empty output", label)
+		assert.Equal(t, uint64(6900), results[0].GasUsed,
+			"%s: RequiredGas charges 6900 regardless of input length", label)
+	}
+
+	t.Run("too-short", func(t *testing.T) {
+		assertWrongLength(t, validP256Input[:100], "100-byte input")
+	})
+
+	t.Run("too-long", func(t *testing.T) {
+		// 160 valid bytes + 32 zero bytes = 192 bytes total
+		long := make([]byte, 192)
+		copy(long, validP256Input)
+		assertWrongLength(t, long, "192-byte input")
 	})
 }
 
