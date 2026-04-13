@@ -9,7 +9,9 @@
         "Marino",
         "octo",
         "octocat",
-        "octocats"
+        "octocats",
+        "p256",
+        "secp256r1"
     ],
     "ignoreWords": [],
     "import": []
