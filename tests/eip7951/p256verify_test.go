@@ -13,7 +13,6 @@ package eip7951
 
 import (
 	"encoding/hex"
-	"math/big"
 	"strings"
 	"testing"
 	"time"
@@ -150,56 +149,44 @@ func TestEIP7951_WrongInputLength(t *testing.T) {
 	})
 }
 
-// p256VerifyContractBytecode is compiled from (solc 0.8.24, --evm-version shanghai):
+// p256ProxyBytecode is a minimal EVM contract that forwards its calldata to the
+// p256Verify precompile (0x0100) via staticcall and returns 32 bytes of output.
 //
-//	contract P256Verify {
-//	  function p256VerifyBytes(bytes memory input) public view returns (uint256 ret) {
-//	    assembly {
-//	      let p := mload(0x40)
-//	      let ok := staticcall(gas(), 0x100, add(input, 32), mload(input), p, 32)
-//	      if ok { ret := mload(p) }
-//	    }
-//	  }
-//	}
-var p256VerifyContractBytecode, _ = hex.DecodeString(
-	"608060405234801561000f575f80fd5b5060043610610029575f3560e01c80633ed4e7d61461002d575b5f80fd5b" +
-		"61004061003b36600461008a565b610052565b60405190815260200160405180910390f35b5f6040516020818451" +
-		"602086016101005afa801561006f57815192505b5050919050565b634e487b7160e01b5f52604160045260245ffd" +
-		"5b5f6020828403121561009a575f80fd5b813567ffffffffffffffff808211156100b1575f80fd5b818401915084" +
-		"601f8301126100c4575f80fd5b8135818111156100d6576100d6610076565b604051601f8201601f19908116603f" +
-		"011681019083821181831017156100fe576100fe610076565b81604052828152876020848701011115610116575f" +
-		"80fd5b826020860160208301375f92810160200192909252509594505050505056fea264697066735822122032c5" +
-		"2793fb9d70df956cbaf79030d76e52225d5b1d9adc7a7b26606ef9d4c54a64736f6c63430008180033",
+// Runtime bytecode (24 bytes):
+//
+//	CALLDATACOPY(calldatasize, mem[0])            — copy input to mem[0..160]
+//	STATICCALL(gas, 0x0100, 0, cds, 0xa0, 32)    — call precompile, output at mem[0xa0]
+//	RETURN(0xa0, 32)                              — return the 32-byte result
+//
+// Input is 160 bytes (0xa0), so output is placed at mem[0xa0] to avoid overlap.
+// mem[0xa0] is zero-initialized; an empty precompile response leaves it all-zeros,
+// making the contract return uint256(0) for invalid signatures.
+//
+// Deployment: 13-byte init code + 24-byte runtime = 37 bytes total.
+var p256ProxyBytecode, _ = hex.DecodeString(
+	"6100188061000d6000396000f3" + // init code (13 bytes): CODECOPY runtime → RETURN
+		"366000600037" + // CALLDATASIZE, PUSH1 0, PUSH1 0, CALLDATACOPY
+		"602060a0" + // PUSH1 32 (retLen), PUSH1 0xa0 (retOffset — after 160-byte input)
+		"3660006101005a" + // CALLDATASIZE (argsLen), PUSH1 0 (argsOffset), PUSH2 0x0100 (addr), GAS
+		"fa" + // STATICCALL
+		"50602060a0f3", // POP, PUSH1 32, PUSH1 0xa0, RETURN
 )
 
-// encodeP256VerifyCall ABI-encodes a call to p256VerifyBytes(bytes).
-// Selector: keccak256("p256VerifyBytes(bytes)") = 0x3ed4e7d6
-// Layout: [selector 4B][offset 32B = 0x20][length 32B][data padded to 32B boundary]
-func encodeP256VerifyCall(input []byte) []byte {
-	padLen := (len(input) + 31) / 32 * 32
-	buf := make([]byte, 4+32+32+padLen)
-	copy(buf[0:4], []byte{0x3e, 0xd4, 0xe7, 0xd6})
-	buf[35] = 0x20 // offset = 32
-	new(big.Int).SetUint64(uint64(len(input))).FillBytes(buf[36:68])
-	copy(buf[68:], input)
-	return buf
-}
-
 func TestEIP7951_ContractCall(t *testing.T) {
-	// Deploy a Solidity wrapper that calls p256Verify via staticcall(gas(), 0x100, ...).
-	// Verifies the full on-chain path: contract → precompile → result.
+	// Deploy a minimal EVM proxy that forwards calldata to precompile 0x0100 via staticcall.
+	// Verifies the full on-chain path: contract → precompile → caller.
 	//
-	// Contract returns uint256(1) for valid sig, uint256(0) for invalid sig.
+	// Contract returns 32-byte big-endian 1 for valid sig, 32-byte 0 for invalid sig.
 	client := helper.NewClient(nodeURL)
 
-	// Deploy the contract.
-	deployClause := tx.NewClause(nil).WithData(p256VerifyContractBytecode)
+	// Deploy the proxy contract.
+	deployClause := tx.NewClause(nil).WithData(p256ProxyBytecode)
 	deployTx := helper.BuildTx(t, client, 300_000, deployClause)
 	deployResult, err := client.SendTransaction(deployTx)
 	require.NoError(t, err)
 
 	receipt := helper.WaitForReceipt(t, client, deployResult.ID, 30*time.Second)
-	require.False(t, receipt.Reverted, "contract deployment must not revert")
+	require.False(t, receipt.Reverted, "proxy deployment must not revert")
 	require.Len(t, receipt.Outputs, 1)
 	require.NotNil(t, receipt.Outputs[0].ContractAddress, "deployment receipt must contain contract address")
 	contractAddr := *receipt.Outputs[0].ContractAddress
@@ -208,7 +195,7 @@ func TestEIP7951_ContractCall(t *testing.T) {
 		callData := &api.BatchCallData{
 			Clauses: api.Clauses{{
 				To:   &contractAddr,
-				Data: "0x" + hex.EncodeToString(encodeP256VerifyCall(validP256Input)),
+				Data: "0x" + hex.EncodeToString(validP256Input),
 			}},
 			Gas: 50_000,
 		}
@@ -218,15 +205,15 @@ func TestEIP7951_ContractCall(t *testing.T) {
 		assert.False(t, results[0].Reverted, "contract call must not revert for valid input")
 		raw, err := hex.DecodeString(strings.TrimPrefix(results[0].Data, "0x"))
 		require.NoError(t, err)
-		require.Len(t, raw, 32, "contract must return 32-byte uint256")
-		assert.Equal(t, byte(1), raw[31], "contract must return uint256(1) for valid P-256 signature")
+		require.Len(t, raw, 32, "contract must return 32 bytes")
+		assert.Equal(t, byte(1), raw[31], "contract must return 1 for valid P-256 signature")
 	})
 
 	t.Run("invalid-signature", func(t *testing.T) {
 		callData := &api.BatchCallData{
 			Clauses: api.Clauses{{
 				To:   &contractAddr,
-				Data: "0x" + hex.EncodeToString(encodeP256VerifyCall(invalidP256Input)),
+				Data: "0x" + hex.EncodeToString(invalidP256Input),
 			}},
 			Gas: 50_000,
 		}
@@ -236,7 +223,7 @@ func TestEIP7951_ContractCall(t *testing.T) {
 		assert.False(t, results[0].Reverted, "contract call must not revert for invalid input")
 		raw, err := hex.DecodeString(strings.TrimPrefix(results[0].Data, "0x"))
 		require.NoError(t, err)
-		require.Len(t, raw, 32, "contract must return 32-byte uint256")
-		assert.Equal(t, byte(0), raw[31], "contract must return uint256(0) for invalid P-256 signature")
+		require.Len(t, raw, 32, "contract must return 32 bytes")
+		assert.Equal(t, byte(0), raw[31], "contract must return 0 for invalid P-256 signature")
 	})
 }
