@@ -34,15 +34,15 @@ import (
 // Pre-fork: 0x5D (TSTORE) is an invalid opcode; the EVM reverts.
 var tstoreTloadRoundtripBytecode = []byte{
 	0x63, 0xDE, 0xAD, 0xBE, 0xEF, // PUSH4 0xDEADBEEF   (value to store)
-	0x60, 0x00,                     // PUSH1 0x00          (transient slot key = 0)
-	0x5D,                           // TSTORE              transient[0] = 0xDEADBEEF
-	0x60, 0x00,                     // PUSH1 0x00          (transient slot key = 0)
-	0x5C,                           // TLOAD               stack[top] = transient[0]
-	0x60, 0x00,                     // PUSH1 0x00          (MSTORE offset)
-	0x52,                           // MSTORE              mem[0:32] = value
-	0x60, 0x20,                     // PUSH1 0x20          (RETURN size = 32)
-	0x60, 0x00,                     // PUSH1 0x00          (RETURN offset = 0)
-	0xF3,                           // RETURN
+	0x60, 0x00, // PUSH1 0x00          (transient slot key = 0)
+	0x5D,       // TSTORE              transient[0] = 0xDEADBEEF
+	0x60, 0x00, // PUSH1 0x00          (transient slot key = 0)
+	0x5C,       // TLOAD               stack[top] = transient[0]
+	0x60, 0x00, // PUSH1 0x00          (MSTORE offset)
+	0x52,       // MSTORE              mem[0:32] = value
+	0x60, 0x20, // PUSH1 0x20          (RETURN size = 32)
+	0x60, 0x00, // PUSH1 0x00          (RETURN offset = 0)
+	0xF3, // RETURN
 }
 
 func TestTSTORE_TLOAD_Roundtrip(t *testing.T) {
@@ -90,7 +90,7 @@ var tloadUninitializedBytecode = []byte{
 	0x52,       // MSTORE       mem[0:32] = 0
 	0x60, 0x20, // PUSH1 0x20   (RETURN size = 32)
 	0x60, 0x00, // PUSH1 0x00   (RETURN offset = 0)
-	0xF3,       // RETURN
+	0xF3, // RETURN
 }
 
 func TestTLOAD_UninitializedSlot(t *testing.T) {
@@ -130,9 +130,9 @@ func TestTLOAD_UninitializedSlot(t *testing.T) {
 // Expected gas: PUSH4(3) + PUSH1(3) + TSTORE(100) + STOP(0) = 106
 var tstoreOnlyBytecode = []byte{
 	0x63, 0xDE, 0xAD, 0xBE, 0xEF, // PUSH4 0xDEADBEEF   (value)
-	0x60, 0x00,                     // PUSH1 0x00          (transient slot key)
-	0x5D,                           // TSTORE
-	0x00,                           // STOP
+	0x60, 0x00, // PUSH1 0x00          (transient slot key)
+	0x5D, // TSTORE
+	0x00, // STOP
 }
 
 // tloadOnlyBytecode measures the gas cost of a single TLOAD.
@@ -142,8 +142,8 @@ var tstoreOnlyBytecode = []byte{
 // Expected gas: PUSH1(3) + TLOAD(100) + STOP(0) = 103
 var tloadOnlyBytecode = []byte{
 	0x60, 0x00, // PUSH1 0x00   (transient slot key = 0)
-	0x5C,       // TLOAD        stack[top] = transient[0] (value left on stack; STOP ignores it)
-	0x00,       // STOP
+	0x5C, // TLOAD        stack[top] = transient[0] (value left on stack; STOP ignores it)
+	0x00, // STOP
 }
 
 func TestTSTORE_TLOAD_GasCost(t *testing.T) {
@@ -200,7 +200,7 @@ var tstoreDoesNotPolluteSloadBytecode = []byte{
 	0x52,       // MSTORE       mem[0:32] = sload_result
 	0x60, 0x20, // PUSH1 0x20   (RETURN size = 32)
 	0x60, 0x00, // PUSH1 0x00   (RETURN offset = 0)
-	0xF3,       // RETURN
+	0xF3, // RETURN
 }
 
 func TestTransientStorage_DoesNotPersistToSLOAD(t *testing.T) {
@@ -244,7 +244,7 @@ var transientIsolationRuntime = []byte{
 	0x36,       // CALLDATASIZE
 	0x15,       // ISZERO
 	0x60, 0x10, // PUSH1 0x10   (TSTORE JUMPDEST at byte 16)
-	0x57,       // JUMPI
+	0x57, // JUMPI
 	// TLOAD handler (bytes 5–15)
 	0x60, 0x00, // PUSH1 0x00   (key = slot 0)
 	0x5C,       // TLOAD
@@ -252,13 +252,13 @@ var transientIsolationRuntime = []byte{
 	0x52,       // MSTORE
 	0x60, 0x20, // PUSH1 0x20   (return size = 32)
 	0x60, 0x00, // PUSH1 0x00   (return offset = 0)
-	0xF3,       // RETURN
+	0xF3, // RETURN
 	// TSTORE handler (bytes 16–23)
 	0x5B,             // JUMPDEST  (byte 16 == 0x10 ✓)
 	0x61, 0xCA, 0xFE, // PUSH2 0xCAFE  (value)
-	0x60, 0x00,       // PUSH1 0x00    (key = slot 0)
-	0x5D,             // TSTORE
-	0x00,             // STOP
+	0x60, 0x00, // PUSH1 0x00    (key = slot 0)
+	0x5D, // TSTORE
+	0x00, // STOP
 }
 
 // makeTransientIsolationInitCode wraps transientIsolationRuntime in standard EVM
@@ -266,13 +266,13 @@ var transientIsolationRuntime = []byte{
 func makeTransientIsolationInitCode() []byte {
 	n := byte(len(transientIsolationRuntime)) // 24 bytes
 	header := []byte{
-		0x60, n,    // PUSH1 n        (runtime length)
+		0x60, n, // PUSH1 n        (runtime length)
 		0x60, 0x0C, // PUSH1 0x0C     (runtime starts at byte 12)
 		0x60, 0x00, // PUSH1 0x00     (memory destination)
-		0x39,       // CODECOPY
-		0x60, n,    // PUSH1 n        (return length)
+		0x39,    // CODECOPY
+		0x60, n, // PUSH1 n        (return length)
 		0x60, 0x00, // PUSH1 0x00     (return offset)
-		0xF3,       // RETURN
+		0xF3, // RETURN
 	}
 	return append(header, transientIsolationRuntime...)
 }
