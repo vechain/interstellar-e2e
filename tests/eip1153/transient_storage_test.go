@@ -137,7 +137,7 @@ var tstoreOnlyBytecode = []byte{
 
 // tloadOnlyBytecode measures the gas cost of a single TLOAD.
 // Sequence: PUSH1 key → TLOAD → PUSH1 0 → MSTORE → PUSH1 0x20 → PUSH1 0 → RETURN
-// Expected gas: PUSH1(3) + TLOAD(100) + PUSH1(3) + MSTORE(3+3_mem) + PUSH1(3) + PUSH1(3) + RETURN(0) = 112
+// Expected gas: PUSH1(3) + TLOAD(100) + PUSH1(3) + MSTORE(3) + mem_expand(3) + PUSH1(3) + PUSH1(3) + RETURN(0) = 118
 var tloadOnlyBytecode = []byte{
 	0x60, 0x00, // PUSH1 0x00   (transient slot key = 0)
 	0x5C,       // TLOAD        stack[top] = transient[0]
@@ -178,9 +178,9 @@ func TestTSTORE_TLOAD_GasCost(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, results, 1)
 		assert.False(t, results[0].Reverted, "TLOAD gas bytecode must not revert: %s", results[0].VMError)
-		// PUSH1(3) + TLOAD(100) + PUSH1(3) + MSTORE(3+3_mem) + PUSH1(3) + PUSH1(3) + RETURN(0) = 112
-		assert.Equal(t, uint64(112), results[0].GasUsed,
-			"TLOAD opcode must cost 100 gas (total 112 with surrounding instructions)")
+		// PUSH1(3) + TLOAD(100) + PUSH1(3) + MSTORE(3) + mem_expand(3) + PUSH1(3) + PUSH1(3) + RETURN(0) = 118
+		assert.Equal(t, uint64(118), results[0].GasUsed,
+			"TLOAD opcode must cost 100 gas (total 118 with surrounding instructions)")
 	})
 }
 
@@ -314,7 +314,7 @@ func TestTransientStorage_ClearedBetweenTransactions(t *testing.T) {
 		},
 		Gas: 100_000,
 	}
-	results, err := client.InspectClauses(tloadCallData, thorclient.Revision(helper.PostForkRevision))
+	results, err := client.InspectClauses(tloadCallData, thorclient.Revision("best"))
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	assert.False(t, results[0].Reverted,
