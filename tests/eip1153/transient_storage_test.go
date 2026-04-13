@@ -11,11 +11,13 @@ import (
 	"encoding/hex"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vechain/thor/v2/api"
 	"github.com/vechain/thor/v2/thorclient"
+	"github.com/vechain/thor/v2/tx"
 
 	"github.com/vechain/interstellar-e2e/tests/helper"
 )
@@ -180,4 +182,145 @@ func TestTSTORE_TLOAD_GasCost(t *testing.T) {
 		assert.Equal(t, uint64(112), results[0].GasUsed,
 			"TLOAD opcode must cost 100 gas (total 112 with surrounding instructions)")
 	})
+}
+
+// tstoreDoesNotPolluteSloadBytecode stores 0x42 into transient slot 0 via TSTORE,
+// then reads slot 0 via SLOAD (persistent storage) and returns the result.
+//
+// EIP-1153: TSTORE and SLOAD operate on separate namespaces.
+// SLOAD must return 0 even though TSTORE was just called with the same key.
+//
+// Expected post-fork output: 32 bytes of zeros (SLOAD returns 0).
+// Pre-fork: 0x5D (TSTORE) is an invalid opcode; the EVM reverts.
+var tstoreDoesNotPolluteSloadBytecode = []byte{
+	0x60, 0x42, // PUSH1 0x42   (value to store transiently)
+	0x60, 0x00, // PUSH1 0x00   (transient slot key = 0)
+	0x5D,       // TSTORE       transient[0] = 0x42
+	0x60, 0x00, // PUSH1 0x00   (persistent storage slot = 0)
+	0x54,       // SLOAD        persistent_storage[0] → must be 0 (not 0x42)
+	0x60, 0x00, // PUSH1 0x00   (MSTORE offset)
+	0x52,       // MSTORE       mem[0:32] = sload_result
+	0x60, 0x20, // PUSH1 0x20   (RETURN size = 32)
+	0x60, 0x00, // PUSH1 0x00   (RETURN offset = 0)
+	0xF3,       // RETURN
+}
+
+func TestTransientStorage_DoesNotPersistToSLOAD(t *testing.T) {
+	client := helper.NewClient(nodeURL)
+	callData := &api.BatchCallData{
+		Clauses: api.Clauses{
+			{Data: "0x" + hex.EncodeToString(tstoreDoesNotPolluteSloadBytecode)},
+		},
+		Gas: 100_000,
+	}
+
+	t.Run("pre-fork", func(t *testing.T) {
+		results, err := client.InspectClauses(callData, thorclient.Revision(helper.PreForkRevision))
+		require.NoError(t, err)
+		require.Len(t, results, 1)
+		assert.True(t, results[0].Reverted,
+			"TSTORE must revert before INTERSTELLAR (invalid opcode)")
+	})
+
+	t.Run("post-fork", func(t *testing.T) {
+		// TSTORE at slot 0 must NOT affect SLOAD at slot 0.
+		// The two opcodes access completely separate storage namespaces.
+		results, err := client.InspectClauses(callData, thorclient.Revision(helper.PostForkRevision))
+		require.NoError(t, err)
+		require.Len(t, results, 1)
+		assert.False(t, results[0].Reverted,
+			"TSTORE+SLOAD must not revert after INTERSTELLAR (vmError: %s)", results[0].VMError)
+		trimmed := strings.TrimPrefix(results[0].Data, "0x")
+		assert.Equal(t, strings.Repeat("0", 64), trimmed,
+			"SLOAD after TSTORE at the same key must return 0 (separate namespace), got: %s", results[0].Data)
+	})
+}
+
+// transientIsolationRuntime is the runtime bytecode for a helper contract that:
+//   - empty calldata  → TSTORE 0xCAFE at slot 0, STOP
+//   - any calldata    → TLOAD slot 0, return 32-byte result
+//
+// Byte layout (dispatcher at bytes 0–4, TLOAD handler 5–15, TSTORE handler 16–23):
+var transientIsolationRuntime = []byte{
+	// dispatcher
+	0x36,       // CALLDATASIZE
+	0x15,       // ISZERO
+	0x60, 0x10, // PUSH1 0x10   (TSTORE JUMPDEST at byte 16)
+	0x57,       // JUMPI
+	// TLOAD handler (bytes 5–15)
+	0x60, 0x00, // PUSH1 0x00   (key = slot 0)
+	0x5C,       // TLOAD
+	0x60, 0x00, // PUSH1 0x00   (MSTORE offset)
+	0x52,       // MSTORE
+	0x60, 0x20, // PUSH1 0x20   (return size = 32)
+	0x60, 0x00, // PUSH1 0x00   (return offset = 0)
+	0xF3,       // RETURN
+	// TSTORE handler (bytes 16–23)
+	0x5B,             // JUMPDEST  (byte 16 == 0x10 ✓)
+	0x61, 0xCA, 0xFE, // PUSH2 0xCAFE  (value)
+	0x60, 0x00,       // PUSH1 0x00    (key = slot 0)
+	0x5D,             // TSTORE
+	0x00,             // STOP
+}
+
+// makeTransientIsolationInitCode wraps transientIsolationRuntime in standard EVM
+// deployer init code. The 12-byte header places the runtime at offset 0x0C.
+func makeTransientIsolationInitCode() []byte {
+	n := byte(len(transientIsolationRuntime)) // 24 bytes
+	header := []byte{
+		0x60, n,    // PUSH1 n        (runtime length)
+		0x60, 0x0C, // PUSH1 0x0C     (runtime starts at byte 12)
+		0x60, 0x00, // PUSH1 0x00     (memory destination)
+		0x39,       // CODECOPY
+		0x60, n,    // PUSH1 n        (return length)
+		0x60, 0x00, // PUSH1 0x00     (return offset)
+		0xF3,       // RETURN
+	}
+	return append(header, transientIsolationRuntime...)
+}
+
+func TestTransientStorage_ClearedBetweenTransactions(t *testing.T) {
+	client := helper.NewClient(nodeURL)
+
+	// Step 1: Deploy the helper contract.
+	initCode := makeTransientIsolationInitCode()
+	deployClause := tx.NewClause(nil).WithData(initCode)
+	deployTx := helper.BuildTx(t, client, 500_000, deployClause)
+	deployResult, err := client.SendTransaction(deployTx)
+	require.NoError(t, err, "contract deployment tx must be accepted")
+
+	deployReceipt := helper.WaitForReceipt(t, client, deployResult.ID, 30*time.Second)
+	require.False(t, deployReceipt.Reverted, "contract deployment must not revert")
+	require.NotEmpty(t, deployReceipt.Outputs, "deployment receipt must have outputs")
+	require.NotNil(t, deployReceipt.Outputs[0].ContractAddress,
+		"deployment output must contain a contract address")
+
+	contractAddr := *deployReceipt.Outputs[0].ContractAddress
+
+	// Step 2: Call the TSTORE path (empty calldata) in a real transaction.
+	tstoreClause := tx.NewClause(&contractAddr).WithData([]byte{})
+	tstoreTx := helper.BuildTx(t, client, 100_000, tstoreClause)
+	tstoreResult, err := client.SendTransaction(tstoreTx)
+	require.NoError(t, err, "TSTORE tx must be accepted by the txpool")
+
+	tstoreReceipt := helper.WaitForReceipt(t, client, tstoreResult.ID, 30*time.Second)
+	require.False(t, tstoreReceipt.Reverted, "TSTORE tx must execute without reverting")
+
+	// Step 3: InspectClauses calls the TLOAD path as a NEW simulated transaction.
+	// The transient slot must be 0 — cleared at the end of the TSTORE transaction.
+	tloadCallData := &api.BatchCallData{
+		Clauses: api.Clauses{
+			{To: &contractAddr, Data: "0x01"}, // non-empty data → TLOAD path
+		},
+		Gas: 100_000,
+	}
+	results, err := client.InspectClauses(tloadCallData, thorclient.Revision(helper.PostForkRevision))
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+	assert.False(t, results[0].Reverted,
+		"TLOAD call must not revert (vmError: %s)", results[0].VMError)
+	trimmed := strings.TrimPrefix(results[0].Data, "0x")
+	assert.Equal(t, strings.Repeat("0", 64), trimmed,
+		"transient storage must be 0 in a new transaction — TSTORE from prior tx must not persist; got: %s",
+		results[0].Data)
 }
