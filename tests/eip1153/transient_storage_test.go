@@ -136,16 +136,14 @@ var tstoreOnlyBytecode = []byte{
 }
 
 // tloadOnlyBytecode measures the gas cost of a single TLOAD.
-// Sequence: PUSH1 key → TLOAD → PUSH1 0 → MSTORE → PUSH1 0x20 → PUSH1 0 → RETURN
-// Expected gas: PUSH1(3) + TLOAD(100) + PUSH1(3) + MSTORE(3) + mem_expand(3) + PUSH1(3) + PUSH1(3) + RETURN(0) = 118
+// Uses STOP (not RETURN) to avoid the 200-gas/byte code-deposit charge that
+// init-code (nil-To clause) incurs when RETURN delivers non-empty bytecode.
+// Sequence: PUSH1 key → TLOAD → STOP
+// Expected gas: PUSH1(3) + TLOAD(100) + STOP(0) = 103
 var tloadOnlyBytecode = []byte{
 	0x60, 0x00, // PUSH1 0x00   (transient slot key = 0)
-	0x5C,       // TLOAD        stack[top] = transient[0]
-	0x60, 0x00, // PUSH1 0x00   (MSTORE offset)
-	0x52,       // MSTORE       mem[0:32] = value
-	0x60, 0x20, // PUSH1 0x20   (RETURN size = 32)
-	0x60, 0x00, // PUSH1 0x00   (RETURN offset = 0)
-	0xF3,       // RETURN
+	0x5C,       // TLOAD        stack[top] = transient[0] (value left on stack; STOP ignores it)
+	0x00,       // STOP
 }
 
 func TestTSTORE_TLOAD_GasCost(t *testing.T) {
@@ -178,9 +176,9 @@ func TestTSTORE_TLOAD_GasCost(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, results, 1)
 		assert.False(t, results[0].Reverted, "TLOAD gas bytecode must not revert: %s", results[0].VMError)
-		// PUSH1(3) + TLOAD(100) + PUSH1(3) + MSTORE(3) + mem_expand(3) + PUSH1(3) + PUSH1(3) + RETURN(0) = 118
-		assert.Equal(t, uint64(118), results[0].GasUsed,
-			"TLOAD opcode must cost 100 gas (total 118 with surrounding instructions)")
+		// PUSH1(3) + TLOAD(100) + STOP(0) = 103
+		assert.Equal(t, uint64(103), results[0].GasUsed,
+			"TLOAD opcode must cost 100 gas (total 103 with surrounding instructions)")
 	})
 }
 
