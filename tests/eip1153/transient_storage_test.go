@@ -75,3 +75,50 @@ func TestTSTORE_TLOAD_Roundtrip(t *testing.T) {
 			"expected output ending in deadbeef, got: %s", results[0].Data)
 	})
 }
+
+// tloadUninitializedBytecode loads transient slot 0 without any prior TSTORE.
+// EIP-1153: uninitialized transient storage slots are zero-valued.
+//
+// Expected post-fork output: 32 bytes of zeros.
+// Pre-fork: 0x5C (TLOAD) is an invalid opcode; the EVM reverts.
+var tloadUninitializedBytecode = []byte{
+	0x60, 0x00, // PUSH1 0x00   (transient slot key = 0)
+	0x5C,       // TLOAD        stack[top] = transient[0]  (== 0, zero-initialised)
+	0x60, 0x00, // PUSH1 0x00   (MSTORE offset)
+	0x52,       // MSTORE       mem[0:32] = 0
+	0x60, 0x20, // PUSH1 0x20   (RETURN size = 32)
+	0x60, 0x00, // PUSH1 0x00   (RETURN offset = 0)
+	0xF3,       // RETURN
+}
+
+func TestTLOAD_UninitializedSlot(t *testing.T) {
+	client := helper.NewClient(nodeURL)
+	callData := &api.BatchCallData{
+		Clauses: api.Clauses{
+			{Data: "0x" + hex.EncodeToString(tloadUninitializedBytecode)},
+		},
+		Gas: 100_000,
+	}
+
+	t.Run("pre-fork", func(t *testing.T) {
+		// 0x5C (TLOAD) is an invalid opcode before INTERSTELLAR.
+		results, err := client.InspectClauses(callData, thorclient.Revision(helper.PreForkRevision))
+		require.NoError(t, err)
+		require.Len(t, results, 1)
+		assert.True(t, results[0].Reverted,
+			"TLOAD must revert before INTERSTELLAR (invalid opcode)")
+	})
+
+	t.Run("post-fork", func(t *testing.T) {
+		// Uninitialized transient slot must read as zero (EIP-1153 §Semantics).
+		results, err := client.InspectClauses(callData, thorclient.Revision(helper.PostForkRevision))
+		require.NoError(t, err)
+		require.Len(t, results, 1)
+		assert.False(t, results[0].Reverted,
+			"TLOAD on uninitialized slot must not revert (vmError: %s)", results[0].VMError)
+		// Output must be 32 zero bytes: "0x" followed by 64 hex zeros.
+		trimmed := strings.TrimPrefix(results[0].Data, "0x")
+		assert.Equal(t, strings.Repeat("0", 64), trimmed,
+			"TLOAD on uninitialized slot must return 32 zero bytes, got: %s", results[0].Data)
+	})
+}
