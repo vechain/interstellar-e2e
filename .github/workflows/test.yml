@@ -41,14 +41,22 @@ jobs:
             network/go.sum
             tests/go.sum
 
+      - name: Get thor commit SHA
+        id: thor-sha
+        run: |
+          SHA=$(gh api repos/${{ inputs.thor-repo || 'vechain/thor' }}/commits/${{ inputs.thor-branch || 'evm-upgrades' }} --jq '.sha[:8]')
+          echo "sha=$SHA" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ github.token }}
+
       - name: Cache thor binary
         uses: actions/cache@v4
         with:
           path: /tmp/thor_*
-          key: thor-binary-${{ inputs.thor-branch || github.ref_name }}-${{ hashFiles('network/setup/network.go') }}
+          key: thor-binary-${{ inputs.thor-branch || 'evm-upgrades' }}-${{ steps.thor-sha.outputs.sha }}-${{ hashFiles('network/setup/network.go') }}
 
       - name: Run e2e tests
         run: make test
         env:
           THOR_REPO: https://github.com/${{ inputs.thor-repo || 'vechain/thor' }}
-          THOR_BRANCH: ${{ inputs.thor-branch || '' }}
+          THOR_BRANCH: ${{ inputs.thor-branch || 'evm-upgrades' }}
