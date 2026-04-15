@@ -11,3 +11,6 @@ go.work.sum
 .idea/
 .vscode/
 .claude/
+
+# Git worktrees
+.worktrees/
