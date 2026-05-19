@@ -12,6 +12,7 @@ End-to-end tests for the VeChain **INTERSTELLAR** fork, which activates at block
 | `tests/eip7934` | [EIP-7934](https://eips.ethereum.org/EIPS/eip-7934) | Max RLP-encoded block size (`MaxRLPBlockSize = 8_388_608`); packer-level split test + P2P consensus-level rejection of oversized blocks |
 | `tests/eip7883` | [EIP-7883](https://eips.ethereum.org/EIPS/eip-7883) | ModExp precompile repricing |
 | `tests/eip7939` | [EIP-7939](https://eips.ethereum.org/EIPS/eip-7939) | `CLZ` opcode (0x1e) — count leading zeros |
+| `tests/eip2935` | [EIP-2935](https://eips.ethereum.org/EIPS/eip-2935) | Serve historical block hashes from state |
 
 ## Repository layout
 
@@ -30,6 +31,7 @@ interstellar-e2e/
     ├── eip7934/
     ├── eip7883/
     └── eip7939/
+    └── eip2935/
 ```
 
 ## Prerequisites
