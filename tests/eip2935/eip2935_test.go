@@ -89,7 +89,6 @@ func TestEIP2935_BlockID(t *testing.T) {
 	}
 
 	t.Run("pre-fork", func(t *testing.T) {
-
 		historyAcc, err := client.Account(&historyAddr, thorclient.Revision(helper.PreForkRevision))
 		require.NoError(t, err)
 		require.NotNil(t, historyAcc)
@@ -104,7 +103,6 @@ func TestEIP2935_BlockID(t *testing.T) {
 	})
 
 	t.Run("post-fork", func(t *testing.T) {
-
 		historyAcc, err := client.Account(&historyAddr, thorclient.Revision(bestRev))
 		require.NoError(t, err)
 		require.NotNil(t, historyAcc)
