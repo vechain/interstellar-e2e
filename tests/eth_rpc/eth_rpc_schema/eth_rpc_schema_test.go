@@ -28,8 +28,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/vechain/interstellar-e2e/tests/helper"
 	"github.com/vechain/thor/v2/thor"
+
+	"github.com/vechain/interstellar-e2e/tests/helper"
 )
 
 // -----------------------------------------------------------------------------
@@ -495,29 +496,6 @@ func isMethodNotFound(err error) bool {
 	return false
 }
 
-// isUnsupported is the broader version of isMethodNotFound: it also matches
-// non-standard "this shape isn't implemented" surfaces such as Thor's
-// "invalid block tag" (returned for hash-form block tags) and "not yet
-// supported" (returned for parameters the node hasn't wired up yet).
-func isUnsupported(err error) bool {
-	if err == nil {
-		return false
-	}
-	if isMethodNotFound(err) {
-		return true
-	}
-	var rpcErr *jsonRPCError
-	if errors.As(err, &rpcErr) {
-		msg := strings.ToLower(rpcErr.Message)
-		for _, marker := range []string{"invalid block tag", "not yet supported"} {
-			if strings.Contains(msg, marker) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 // hexQuantityToInt parses a JSON-encoded QUANTITY ("0x..."). Fails the test on
 // any parse error.
 func hexQuantityToInt(t *testing.T, raw json.RawMessage) *big.Int {
@@ -604,7 +582,17 @@ func waitReceipt(t *testing.T, hash string) map[string]any {
 // signDynamicFeeTx hand-builds and signs an EIP-1559 (type-2) transaction
 // envelope without depending on the local eth_client package. The result is
 // the raw bytes ready for eth_sendRawTransaction.
-func signDynamicFeeTx(t *testing.T, key *ecdsa.PrivateKey, chainID *big.Int, nonce uint64, tipCap, feeCap *big.Int, gas uint64, to *common.Address, value *big.Int, data []byte) []byte {
+func signDynamicFeeTx(
+	t *testing.T,
+	key *ecdsa.PrivateKey,
+	chainID *big.Int,
+	nonce uint64,
+	tipCap, feeCap *big.Int,
+	gas uint64,
+	to *common.Address,
+	value *big.Int,
+	data []byte,
+) []byte {
 	t.Helper()
 	payload := []any{
 		chainID,
@@ -630,7 +618,8 @@ func signDynamicFeeTx(t *testing.T, key *ecdsa.PrivateKey, chainID *big.Int, non
 	s := new(big.Int).SetBytes(sig[32:64])
 
 	signed := []any{
-		chainID, nonce, tipCap, feeCap, gas, to, value, data, []any{},
+		chainID, nonce, tipCap, feeCap, gas, to, value, data,
+		[]any{},
 		v, r, s,
 	}
 	return append([]byte{0x02}, mustRLP(t, signed)...)
