@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "eth_getTransactionByBlockHashAndIndex.json",
+  "title": "eth_getTransactionByBlockHashAndIndex result",
+  "oneOf": [
+    { "type": "null" },
+    { "$ref": "_defs.json#/$defs/transaction" }
+  ]
+}

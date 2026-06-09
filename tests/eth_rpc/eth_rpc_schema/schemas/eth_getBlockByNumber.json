@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "eth_getBlockByNumber.json",
+  "title": "eth_getBlockByNumber result",
+  "description": "Either null (block not found) or a full block, with transactions as either hashes (includeTxs=false) or expanded objects (includeTxs=true).",
+  "oneOf": [
+    { "type": "null" },
+    {
+      "allOf": [
+        { "$ref": "_defs.json#/$defs/blockBase" },
+        {
+          "type": "object",
+          "properties": {
+            "transactions": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  { "$ref": "_defs.json#/$defs/hash32" },
+                  { "$ref": "_defs.json#/$defs/transaction" }
+                ]
+              }
+            }
+          },
+          "required": ["transactions"]
+        }
+      ]
+    }
+  ]
+}

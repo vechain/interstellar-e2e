@@ -36,6 +36,7 @@ require (
 	github.com/prometheus/procfs v0.12.0 // indirect
 	github.com/qianbin/directcache v0.9.7 // indirect
 	github.com/qianbin/drlp v0.0.0-20240102101024-e0e02518b5f9 // indirect
+	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20220614013038-64ee5596c38a // indirect
 	github.com/vechain/go-ecvrf v0.0.0-20251211112124-5d5a3ef70fc9 // indirect
 	golang.org/x/crypto v0.49.0 // indirect

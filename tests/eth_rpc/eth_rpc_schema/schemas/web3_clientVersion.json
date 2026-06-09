@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "web3_clientVersion.json",
+  "title": "web3_clientVersion result",
+  "description": "Free-form client identifier string (e.g. \"Thor/v2.x.x\").",
+  "type": "string",
+  "minLength": 1
+}

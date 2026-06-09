@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "eth_getLogs.json",
+  "title": "eth_getLogs result",
+  "type": "array",
+  "items": { "$ref": "_defs.json#/$defs/log" }
+}

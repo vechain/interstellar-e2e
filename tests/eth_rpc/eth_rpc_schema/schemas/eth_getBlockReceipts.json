@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "eth_getBlockReceipts.json",
+  "title": "eth_getBlockReceipts result",
+  "oneOf": [
+    { "type": "null" },
+    {
+      "type": "array",
+      "items": { "$ref": "_defs.json#/$defs/receipt" }
+    }
+  ]
+}
