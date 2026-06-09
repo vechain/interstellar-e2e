@@ -232,7 +232,7 @@ func TestEthGetTransactionCount(t *testing.T) {
 		// Wait for the receipt on the Thor side so subsequent lookups succeed.
 		thorClient := helper.NewClient(nodeURL)
 		b32 := thor.Bytes32(common.HexToHash(hash))
-		helper.WaitForReceipt(t, thorClient, &b32, 30*time.Second)
+		helper.WaitForReceipt(t, thorClient, &b32, 20*time.Second)
 
 		rpcCallAndValidate(t, "eth_getTransactionCount", from.Hex(), "latest")
 	})
@@ -283,7 +283,7 @@ func TestEthGetBlockByNumber_LatestFullTxs(t *testing.T) {
 	// Wait for the receipt on the Thor side so subsequent lookups succeed.
 	thorClient := helper.NewClient(nodeURL)
 	b32 := thor.Bytes32(common.HexToHash(hash))
-	helper.WaitForReceipt(t, thorClient, &b32, 30*time.Second)
+	helper.WaitForReceipt(t, thorClient, &b32, 20*time.Second)
 
 	rpcCallAndValidate(t, "eth_getBlockByNumber", "latest", true)
 }
@@ -585,7 +585,7 @@ func sendTransfer(t *testing.T) string {
 	// Wait for the receipt on the Thor side so subsequent lookups succeed.
 	thorClient := helper.NewClient(nodeURL)
 	b32 := thor.Bytes32(common.HexToHash(hash))
-	helper.WaitForReceipt(t, thorClient, &b32, 30*time.Second)
+	helper.WaitForReceipt(t, thorClient, &b32, 20*time.Second)
 
 	return hash
 }
