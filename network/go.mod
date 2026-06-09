@@ -3,7 +3,7 @@ module github.com/vechain/interstellar-e2e/network
 go 1.26.1
 
 require (
-	github.com/vechain/networkhub v0.0.8-0.20260331132751-a070cb8f5bd2
+	github.com/vechain/networkhub v0.0.8
 	github.com/vechain/thor/v2 v2.4.3
 )
 
