@@ -41,6 +41,15 @@ jobs:
             network/go.sum
             tests/go.sum
 
+      - uses: actions/setup-node@v5
+        with:
+          # Node 22 makes WebSocket available as a stable global — required by
+          # tests/eth_rpc/ethersjs/test/websocket.test.ts (ethers v6 WebSocketProvider
+          # picks up globalThis.WebSocket when given a plain URL string).
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: tests/eth_rpc/ethersjs/package-lock.json
+
       - name: Get thor commit SHA
         id: thor-sha
         run: |

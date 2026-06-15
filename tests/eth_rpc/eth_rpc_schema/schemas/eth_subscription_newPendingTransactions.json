@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "eth_subscription_newPendingTransactions.json",
+  "title": "eth_subscription newPendingTransactions payload",
+  "description": "params.result for an eth_subscription notification with subscription type 'newPendingTransactions'. Thor pushes just the transaction hash for executable TypeEthDynamicFee txs (rpc/ws/subscriptions.go:118).",
+  "$ref": "_defs.json#/$defs/hash32"
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "eth_subscription_newHeads.json",
+  "title": "eth_subscription newHeads payload",
+  "description": "params.result for an eth_subscription notification with subscription type 'newHeads'. Thor delivers a full EthBlock with fullTxs=false (rpc/ws/subscriptions.go:42), so transactions is an array of hash32.",
+  "allOf": [
+    { "$ref": "_defs.json#/$defs/blockBase" },
+    {
+      "type": "object",
+      "properties": {
+        "transactions": {
+          "type": "array",
+          "items": { "$ref": "_defs.json#/$defs/hash32" }
+        }
+      },
+      "required": ["transactions"]
+    }
+  ]
+}

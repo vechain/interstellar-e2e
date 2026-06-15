@@ -4,6 +4,8 @@ go 1.26.1
 
 require (
 	github.com/ethereum/go-ethereum v1.8.14
+	github.com/gorilla/websocket v1.4.1
+	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1
 	github.com/stretchr/testify v1.11.1
 	github.com/vechain/thor/v2 v2.4.4-0.20260327111901-302778878883
 )
@@ -20,7 +22,6 @@ require (
 	github.com/go-stack/stack v1.7.0 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
-	github.com/gorilla/websocket v1.4.1 // indirect
 	github.com/hashicorp/golang-lru v0.0.0-20160813221303-0a025b7e63ad // indirect
 	github.com/holiman/uint256 v1.2.4 // indirect
 	github.com/huin/goupnp v0.0.0-20171109214107-dceda08e705b // indirect
@@ -36,7 +37,6 @@ require (
 	github.com/prometheus/procfs v0.12.0 // indirect
 	github.com/qianbin/directcache v0.9.7 // indirect
 	github.com/qianbin/drlp v0.0.0-20240102101024-e0e02518b5f9 // indirect
-	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20220614013038-64ee5596c38a // indirect
 	github.com/vechain/go-ecvrf v0.0.0-20251211112124-5d5a3ef70fc9 // indirect
 	golang.org/x/crypto v0.49.0 // indirect
