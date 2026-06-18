@@ -45,14 +45,6 @@ NODE_URL=http://127.0.0.1:8131 npm test
 There is no JS-side network spawn anymore — `src/fixtures.ts:getNodeUrl()`
 just reads `process.env.NODE_URL` and throws if it is missing.
 
-## Thor branch requirement
-
-Thor's Ethereum-compat RPC (`POST /rpc`) ships on the `pedro/eth_eq_json_rpc`
-branch. The default `evm-upgrades` branch wired into `network/setup/network.go`
-does not expose it. `ethersjs_test.go` sets `THOR_BRANCH=pedro/eth_eq_json_rpc`
-in `TestMain` before calling `helper.RunTestMain`, so the network the Go
-wrapper builds uses the right branch.
-
 ## Regenerating the contract artifact
 
 `contracts/Storage.json` is checked in. To rebuild it after changing

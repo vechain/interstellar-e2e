@@ -15,12 +15,6 @@ import {
   TEST_SENDER_KEY,
 } from '../src/fixtures';
 
-// ethers v6 `WebSocketProvider` is functionally equivalent to JsonRpcProvider
-// for read RPCs, but `provider.on('block')` / `contract.on('Event')` use
-// `eth_subscribe('newHeads' | 'logs')` instead of the HTTP filter trio
-// (eth_newFilter + eth_getFilterChanges polling). Thor's pedro/eth_eq_json_rpc
-// branch handles the WS upgrade on the same /rpc path (cmd/thor/httpserver/api_server.go:161)
-// and supports newHeads / logs subscriptions (rpc/ws/conn.go:183-200).
 describe('WebSocketProvider — eth_subscribe (newHeads / logs)', () => {
   it('getChainId works over a WebSocket transport', async () => {
     const wsProvider = makeWsProvider();
