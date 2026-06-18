@@ -1,7 +1,19 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { ethers, JsonRpcProvider, Wallet, WebSocketProvider } from 'ethers';
-import { getNodeUrl } from './globalSetup';
+
+// NODE_URL is exported by the Go wrapper (tests/eth_rpc/ethersjs/ethersjs_test.go)
+// which manages the network lifecycle via helper.RunTestMain. Running `npx mocha`
+// or `npm test` directly requires the caller to export NODE_URL themselves.
+export function getNodeUrl(): string {
+  const url = process.env.NODE_URL;
+  if (!url) {
+    throw new Error(
+      'NODE_URL not set — run the suite via `go test` (which starts the network) or export NODE_URL manually',
+    );
+  }
+  return url;
+}
 
 // Pre-funded master accounts from LocalThreeNodesNetwork genesis.
 // Mirrors tests/helper/client.go:16-21.

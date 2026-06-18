@@ -4,9 +4,7 @@
   "version": "0.0.0",
   "description": "ethers.js v6 compatibility tests against Thor's Ethereum-compatible RPC.",
   "scripts": {
-    "build:network": "cd ../../.. && go build -o /tmp/interstellar-network github.com/vechain/interstellar-e2e/network",
     "compile:contracts": "node scripts/compile.cjs",
-    "pretest": "npm run build:network",
     "test": "mocha"
   },
   "devDependencies": {

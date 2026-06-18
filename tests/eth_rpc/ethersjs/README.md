@@ -25,42 +25,33 @@ catches up — flip the assertion when that happens.
 
 ## Run
 
+The suite runs as part of `go test ./...` via the Go wrapper in
+`ethersjs_test.go`. The wrapper calls `helper.RunTestMain` to start the network
+(or reuse one when `NODE_URL` is exported), then invokes `npx mocha` with
+`NODE_URL` injected into the child env.
+
 ```sh
-npm install
-npm test
+go test ./tests/eth_rpc/ethersjs/...
 ```
 
-`pretest` rebuilds `/tmp/interstellar-network` from the workspace; the global
-fixture in `src/globalSetup.ts` spawns it, reads the JSON ready-line from
-stdout, and SIGTERMs it on teardown.
-
-To target an externally-managed node, set `NODE_URL`:
+To run mocha directly (e.g. while iterating on a single test file), export
+`NODE_URL` yourself against an already-running node:
 
 ```sh
+cd tests/eth_rpc/ethersjs
 NODE_URL=http://127.0.0.1:8131 npm test
 ```
 
-## Can Mocha call `helper.RunTestMain`?
-
-No — `helper.RunTestMain` is a Go function and Mocha is JavaScript. The
-fixture in `src/globalSetup.ts` mirrors the same protocol the Go helper uses:
-
-| `helper.RunTestMain` (Go)                          | `mochaGlobalSetup` (TS)                       |
-| -------------------------------------------------- | --------------------------------------------- |
-| Honors `NODE_URL` env var                          | same                                          |
-| Spawns `/tmp/interstellar-network start`           | same                                          |
-| Line-scans stdout for `{"nodes":[...],...}` JSON   | same                                          |
-| 15-minute startup timeout (first-run thor compile) | same                                          |
-| `defer stop()` → SIGTERM the child                 | `mochaGlobalTeardown` → SIGTERM + await exit  |
-
-So the JS fixture is a one-to-one port of the Go helper.
+There is no JS-side network spawn anymore — `src/fixtures.ts:getNodeUrl()`
+just reads `process.env.NODE_URL` and throws if it is missing.
 
 ## Thor branch requirement
 
 Thor's Ethereum-compat RPC (`POST /rpc`) ships on the `pedro/eth_eq_json_rpc`
 branch. The default `evm-upgrades` branch wired into `network/setup/network.go`
-does not expose it. `globalSetup.ts` sets `THOR_BRANCH=pedro/eth_eq_json_rpc`
-for the spawned binary unless the caller has already exported it.
+does not expose it. `ethersjs_test.go` sets `THOR_BRANCH=pedro/eth_eq_json_rpc`
+in `TestMain` before calling `helper.RunTestMain`, so the network the Go
+wrapper builds uses the right branch.
 
 ## Regenerating the contract artifact
 
@@ -74,8 +65,8 @@ npm run compile:contracts
 ## Layout
 
 ```text
-src/globalSetup.ts   # spawns network binary, exposes node URL via env
-src/fixtures.ts      # provider/wallet factories + pre-funded test keys
+src/fixtures.ts      # provider/wallet factories + pre-funded test keys,
+                     # reads NODE_URL from env (set by the Go wrapper)
 contracts/Storage.sol, Storage.json
 scripts/compile.cjs  # one-shot solc → Storage.json
 test/provider.test.ts # 16 tests — block/tx/log lookups, getFeeData,

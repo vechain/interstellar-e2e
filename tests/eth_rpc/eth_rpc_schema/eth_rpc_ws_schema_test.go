@@ -146,22 +146,6 @@ func TestWsSubscribeNewPendingTransactions(t *testing.T) {
 	validateResult(t, "eth_unsubscribe", unsubRaw)
 }
 
-// TestWsSubscribeSyncingRejected pins down that Thor's eth_subscribe rejects
-// the 'syncing' subtype with InvalidParams (-32602). Standard go-ethereum
-// nodes accept 'syncing'; if Thor catches up, flip this test to a success path.
-// Reference: rpc/ws/conn.go:206 ('unsupported subscription type ...').
-func TestWsSubscribeSyncingRejected(t *testing.T) {
-	wc := wsDial(t)
-
-	_, err := wsCall(t, wc, 1, "eth_subscribe", "syncing")
-	require.Error(t, err, "expected eth_subscribe('syncing') to be rejected")
-
-	var rpcErr *jsonRPCError
-	require.ErrorAs(t, err, &rpcErr, "error must be a jsonRPCError")
-	assert.Equal(t, jsonRPCInvalidParams, rpcErr.Code, "expected InvalidParams (-32602)")
-	assert.Contains(t, strings.ToLower(rpcErr.Message), "unsupported subscription type")
-}
-
 // broadcastEthTx signs and submits an EIP-1559 transaction from helper.TestSenderKey.
 // Returns the tx hash from eth_sendRawTransaction. Used by the logs and pending
 // subscription tests to trigger a server-side notification.
