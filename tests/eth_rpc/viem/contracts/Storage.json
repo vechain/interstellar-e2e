@@ -1,0 +1,140 @@
+{
+  "contractName": "Storage",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "given",
+          "type": "uint256"
+        }
+      ],
+      "name": "MustBeNonZero",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "who",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "value",
+          "type": "uint256"
+        }
+      ],
+      "name": "Set",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "who",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "Tipped",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "get",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "v",
+          "type": "uint256"
+        }
+      ],
+      "name": "set",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "v",
+          "type": "uint256"
+        }
+      ],
+      "name": "setStrict",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "v",
+          "type": "uint256"
+        }
+      ],
+      "name": "setStrictCustomError",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "tip",
+      "outputs": [],
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "totalTipped",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "value",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x6080604052348015600f57600080fd5b506102648061001f6000396000f3fe6080604052600436106100705760003560e01c80635e170bd51161004e5780635e170bd5146100c757806360fe47b1146100e75780636d4ce63c14610107578063b814b7ed1461011c57600080fd5b80632755cd2d146100755780633fa4f2451461007f57806358dd18d3146100a7575b600080fd5b61007d61012f565b005b34801561008b57600080fd5b5061009560005481565b60405190815260200160405180910390f35b3480156100b357600080fd5b5061007d6100c2366004610215565b610166565b3480156100d357600080fd5b5061007d6100e2366004610215565b6101f1565b3480156100f357600080fd5b5061007d610102366004610215565b6101b4565b34801561011357600080fd5b50600054610095565b34801561012857600080fd5b5047610095565b60405134815233907f905516bf815c273f240e1d48d78ea7db3f1f0d00b912fc69522caf0ea70450a29060200160405180910390a2565b806000036101b45760405162461bcd60e51b815260206004820152601660248201527576616c7565206d757374206265206e6f6e2d7a65726f60501b60448201526064015b60405180910390fd5b600081905560405181815233907ffd28ec3ec2555238d8ad6f9faf3e4cd10e574ce7e7ef28b73caa53f9512f65b99060200160405180910390a250565b806000036101b45760405163251ed31d60e11b8152600481018290526024016101ab565b60006020828403121561022757600080fd5b503591905056fea2646970667358221220947e72bf8cff231dfcab3ec92546fb82ae35ca5ba5a041822cff8a7d7793e82364736f6c63430008230033"
+}

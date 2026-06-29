@@ -1,0 +1,19 @@
+{
+  "name": "interstellar-eth-rpc-viem",
+  "private": true,
+  "version": "0.0.0",
+  "description": "viem v2 compatibility tests against Thor's Ethereum-compatible RPC.",
+  "scripts": {
+    "test": "mocha"
+  },
+  "devDependencies": {
+    "@types/chai": "^4.3.16",
+    "@types/mocha": "^10.0.6",
+    "@types/node": "^20.12.7",
+    "chai": "^4.4.1",
+    "mocha": "^10.4.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3",
+    "viem": "^2.21.0"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "eth_getUncleCountByBlockHash.json",
+  "title": "eth_getUncleCountByBlockHash result",
+  "description": "Number of uncles in a block by hash. VeChain has no uncles, so this is always 0x0.",
+  "$ref": "_defs.json#/$defs/quantityOrNull"
+}

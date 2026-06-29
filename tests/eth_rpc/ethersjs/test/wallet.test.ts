@@ -237,6 +237,27 @@ describe('Wallet — sign & send EIP-1559 tx', () => {
     expect(after - before).to.equal(3n);
   });
 
+  it('signer-level getNonce / estimateGas / call route through the provider', async () => {
+    // Wallet (BaseWallet → AbstractSigner) exposes its own getNonce/estimateGas/
+    // call wrappers that thread `from` through the provider's RPC. They overlap
+    // with the provider-level methods covered in provider.test.ts but exercise
+    // the signer code path dApps use via `wallet.*`.
+    const provider = makeProvider();
+    const wallet = makeWallet(TEST_SENDER_KEY, provider);
+
+    const signerNonce = await wallet.getNonce();
+    const providerNonce = await provider.getTransactionCount(TEST_SENDER_ADDRESS);
+    expect(signerNonce).to.equal(providerNonce);
+
+    const gas = await wallet.estimateGas({ to: NODE2_ADDRESS, value: 1n });
+    expect(gas).to.be.a('bigint');
+    expect(gas > 0n, `gas was ${gas}`).to.equal(true);
+
+    // A no-op call to an EOA returns 0x; the signer fills in `from` for us.
+    const result = await wallet.call({ to: NODE2_ADDRESS, value: 0n });
+    expect(result).to.equal('0x');
+  });
+
   it('HDNodeWallet.fromPhrase produces a deterministic address from a mnemonic', () => {
     const phrase =
       'test test test test test test test test test test test junk';

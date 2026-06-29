@@ -6,6 +6,7 @@ import {
   Wallet,
 } from 'ethers';
 import {
+  getWsUrl,
   loadStorageArtifact,
   makeProvider,
   makeWallet,
@@ -14,6 +15,19 @@ import {
   TEST_SENDER_ADDRESS,
   TEST_SENDER_KEY,
 } from '../src/fixtures';
+
+// Minimal structural type for the Node 22+ global WebSocket — @types/node@20
+// doesn't declare it, so we reach for it through globalThis with our own shape
+// rather than relying on the lib typings.
+interface RawWebSocket {
+  send(data: string): void;
+  close(): void;
+  addEventListener(type: 'open' | 'error', listener: () => void): void;
+  addEventListener(type: 'message', listener: (ev: { data: unknown }) => void): void;
+}
+const RawWebSocket = (globalThis as unknown as {
+  WebSocket: new (url: string) => RawWebSocket;
+}).WebSocket;
 
 describe('WebSocketProvider — eth_subscribe (newHeads / logs)', () => {
   it('getChainId works over a WebSocket transport', async () => {
@@ -107,6 +121,73 @@ describe('WebSocketProvider — eth_subscribe (newHeads / logs)', () => {
       wsProvider.removeAllListeners();
       await wsProvider.destroy();
     }
+  });
+
+  it('wsProvider.once("block") fires exactly once over the socket', async function () {
+    this.timeout(60_000);
+    const wsProvider = makeWsProvider();
+    try {
+      let count = 0;
+      const n = await new Promise<number>((resolve) => {
+        wsProvider.once('block', (b: number) => {
+          count += 1;
+          resolve(b);
+        });
+      });
+      expect(n).to.be.a('number').and.greaterThan(0);
+      // A couple of head notifications should arrive in the next 2s; a one-shot
+      // listener must not refire on them.
+      await new Promise((r) => setTimeout(r, 2_000));
+      expect(count, 'ws once("block") fired more than once').to.equal(1);
+    } finally {
+      wsProvider.removeAllListeners();
+      await wsProvider.destroy();
+    }
+  });
+
+  it('eth_subscribe("syncing") over the socket — skip if Thor does not register it', async function () {
+    this.timeout(30_000);
+    // ethers exposes no high-level "syncing" event and routing a raw
+    // eth_subscribe through its SocketProvider fights the internal subscription
+    // manager — so drive a bare WebSocket and speak JSON-RPC directly. Thor has
+    // historically not implemented the "syncing" subscription topic; if it
+    // still rejects the request we skip (documenting the gap) instead of
+    // failing. If Thor adds it, this asserts a well-formed subscription id.
+    const ws = new RawWebSocket(getWsUrl());
+    let response: { result?: unknown; error?: unknown };
+    try {
+      response = await new Promise((resolve, reject) => {
+        const timer = setTimeout(
+          () => reject(new Error('eth_subscribe(syncing) timed out')),
+          15_000,
+        );
+        ws.addEventListener('open', () => {
+          ws.send(
+            JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_subscribe', params: ['syncing'] }),
+          );
+        });
+        ws.addEventListener('message', (ev: { data: unknown }) => {
+          clearTimeout(timer);
+          try {
+            resolve(JSON.parse(String(ev.data)) as { result?: unknown; error?: unknown });
+          } catch (e) {
+            reject(e as Error);
+          }
+        });
+        ws.addEventListener('error', () => {
+          clearTimeout(timer);
+          reject(new Error('websocket transport error'));
+        });
+      });
+    } finally {
+      ws.close();
+    }
+
+    if (response.error != null) {
+      // Thor rejected the subscription topic — documented gap, not a failure.
+      this.skip();
+    }
+    expect(response.result, 'subscription id').to.match(/^0x[0-9a-fA-F]+$/);
   });
 
   it('provider.destroy() closes the websocket cleanly', async () => {

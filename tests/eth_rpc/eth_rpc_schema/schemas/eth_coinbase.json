@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "eth_coinbase.json",
+  "title": "eth_coinbase result",
+  "description": "Client coinbase address. Thor (PoA) returns the zero address — it has no local mining-reward account (rpc/chain/handler.go:ethCoinbase).",
+  "$ref": "_defs.json#/$defs/address"
+}

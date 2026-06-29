@@ -1,4 +1,4 @@
-.PHONY: build-network ethersjs-deps test clean stop status lint
+.PHONY: build-network ethersjs-deps web3js-deps viem-deps test clean stop status lint
 
 build-network:
 	cd network && go build -o /tmp/interstellar-network github.com/vechain/interstellar-e2e/network && cd ..
@@ -6,7 +6,13 @@ build-network:
 ethersjs-deps:
 	@[ -d tests/eth_rpc/ethersjs/node_modules ] || (cd tests/eth_rpc/ethersjs && npm ci)
 
-test: build-network ethersjs-deps
+web3js-deps:
+	@[ -d tests/eth_rpc/web3js/node_modules ] || (cd tests/eth_rpc/web3js && npm ci)
+
+viem-deps:
+	@[ -d tests/eth_rpc/viem/node_modules ] || (cd tests/eth_rpc/viem && npm ci)
+
+test: build-network ethersjs-deps web3js-deps viem-deps
 	@/tmp/interstellar-network start & \
 	NODE_URL=$$(/tmp/interstellar-network node-url) && \
 	NODE_P2P_PORT=$$(/tmp/interstellar-network node-p2p-port) && \

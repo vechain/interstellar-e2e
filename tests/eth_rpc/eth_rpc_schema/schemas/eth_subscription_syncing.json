@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "eth_subscription_syncing.json",
+  "title": "eth_subscription syncing payload",
+  "description": "params.result for an eth_subscription notification with subscription type 'syncing'. While syncing, Thor pushes {syncing:true, status:{startingBlock,currentBlock,highestBlock}}; once synced it pushes a single boolean false (rpc/ws/subscriptions.go:runSyncing).",
+  "oneOf": [
+    { "type": "boolean" },
+    {
+      "type": "object",
+      "properties": {
+        "syncing": { "type": "boolean" },
+        "status": {
+          "type": "object",
+          "properties": {
+            "startingBlock": { "$ref": "_defs.json#/$defs/quantity" },
+            "currentBlock":  { "$ref": "_defs.json#/$defs/quantity" },
+            "highestBlock":  { "$ref": "_defs.json#/$defs/quantity" }
+          },
+          "required": ["startingBlock", "currentBlock", "highestBlock"]
+        }
+      },
+      "required": ["syncing", "status"]
+    }
+  ]
+}

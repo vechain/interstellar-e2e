@@ -13,10 +13,11 @@
 //   5. Issues eth_unsubscribe and validates the boolean against
 //      schemas/eth_unsubscribe.json.
 //
-// The syncing subscription is documented as a rejection — Thor's switch in
-// rpc/ws/conn.go:182-207 only implements newHeads/logs/newPendingTransactions;
-// any other subtype returns InvalidParams (-32602). If Thor ever ships
-// 'syncing' that test flips.
+// Thor's switch in rpc/ws/conn.go implements newHeads/logs/
+// newPendingTransactions/syncing; any other subtype returns InvalidParams
+// (-32602). The 'syncing' subscription is covered by TestWsSubscribeSyncing in
+// eth_rpc_schema_extra_test.go (the old TestWsSubscribeSyncingRejected was
+// removed once Thor shipped it).
 
 package ethrpcschema
 
@@ -38,10 +39,6 @@ import (
 
 	"github.com/vechain/interstellar-e2e/tests/helper"
 )
-
-// jsonRPCInvalidParams is the JSON-RPC 2.0 code reserved for parameter errors.
-// Thor's rpc/ws/conn.go:206 returns this for unsupported subscription subtypes.
-const jsonRPCInvalidParams = -32602
 
 // TestWsSubscribeNewHeads validates that an eth_subscribe('newHeads') call
 // returns a hex subID, pushes a block-shaped notification on the next packed

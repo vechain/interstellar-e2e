@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { JsonRpcProvider, Wallet, ZeroAddress, id, toBeHex } from 'ethers';
+import { JsonRpcProvider, Wallet, ZeroAddress, id, toBeHex, toQuantity } from 'ethers';
 import {
   getHttpUrl,
   makeProvider,
@@ -291,6 +291,34 @@ describe('Provider read-only RPC', () => {
       expect((accounts as unknown[]).length).to.equal(0);
     });
 
+    it('listAccounts() (high-level wrapper) returns an empty signer array', async () => {
+      // JsonRpcApiProvider.listAccounts() maps eth_accounts into JsonRpcSigner[].
+      // The lower-level send('eth_accounts') is asserted above; this pins the
+      // high-level path dApps actually call.
+      const accounts = await provider.listAccounts();
+      expect(accounts).to.be.an('array');
+      expect(accounts.length).to.equal(0);
+    });
+
+    it('getSigner() rejects — index 0 has no unlocked node account behind it', async () => {
+      // getSigner() defaults to account index 0 and reads eth_accounts; with an
+      // empty keystore ethers throws "no such account" before returning a
+      // JsonRpcSigner. This is the high-level failure every getSigner()-based
+      // dApp hits on Thor. Flip to a success path if Thor ever unlocks keys.
+      let caught: unknown;
+      try {
+        await provider.getSigner();
+      } catch (err) {
+        caught = err;
+      }
+      expect(caught, 'expected getSigner() to reject with no node accounts').to.not.be.undefined;
+      // ethers throws a plain Error("no such account"); its message is a
+      // non-enumerable own property, so read it directly rather than via the
+      // enumerable-leaf walker used for richer JSON-RPC error objects.
+      const msg = String((caught as Error).message ?? '');
+      expect(msg, 'error should explain the missing node account').to.match(/account/i);
+    });
+
     it('eth_sendTransaction is rejected — no node-side signer to deliver to', async () => {
       let caught: unknown;
       try {
@@ -436,5 +464,283 @@ describe('Provider read-only RPC', () => {
       ]);
       expect(n).to.match(/^0x[0-9a-fA-F]+$/);
     });
+  });
+
+  describe('ENS resolution (expected unsupported — Thor network carries no ENS plugin)', () => {
+    // ethers v6 throws UNSUPPORTED_OPERATION "network does not support ENS"
+    // because the Network object for Thor's chainId has no Ens plugin
+    // registered. Each test attempts the real call and *skips* (rather than
+    // failing the suite) when that client-side gap is detected — if Thor ever
+    // ships an ENS registry + a matching network plugin, these flip to hard
+    // assertions on the resolved value.
+    const ensUnsupported = (err: unknown): boolean =>
+      /does not support ENS|UNSUPPORTED_OPERATION/i.test(collectStrings(err).join(' || '));
+
+    it('resolveName(name) — forward resolution', async function () {
+      try {
+        const addr = await provider.resolveName('vitalik.eth');
+        expect(addr === null || /^0x[0-9a-fA-F]{40}$/.test(addr)).to.equal(true);
+      } catch (err) {
+        if (ensUnsupported(err)) this.skip();
+        throw err;
+      }
+    });
+
+    it('lookupAddress(address) — reverse resolution', async function () {
+      try {
+        const name = await provider.lookupAddress(TEST_SENDER_ADDRESS);
+        expect(name === null || typeof name === 'string').to.equal(true);
+      } catch (err) {
+        if (ensUnsupported(err)) this.skip();
+        throw err;
+      }
+    });
+
+    it('getResolver(name) — resolver lookup', async function () {
+      try {
+        const resolver = await provider.getResolver('vitalik.eth');
+        expect(resolver === null || typeof resolver === 'object').to.equal(true);
+      } catch (err) {
+        if (ensUnsupported(err)) this.skip();
+        throw err;
+      }
+    });
+
+    it('getAvatar(name) — avatar lookup', async function () {
+      try {
+        const avatar = await provider.getAvatar('vitalik.eth');
+        expect(avatar === null || typeof avatar === 'string').to.equal(true);
+      } catch (err) {
+        if (ensUnsupported(err)) this.skip();
+        throw err;
+      }
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Coverage for eth_* RPC methods Thor implements but ethers exposes no
+// high-level wrapper for — exercised via provider.send and asserted against
+// the Ethereum JSON-RPC contract. Cross-checked against thor's rpc/ handlers
+// on branch pedro/eth_eq_json_rpc.
+// ---------------------------------------------------------------------------
+describe('Block & transaction index methods (implemented on Thor)', () => {
+  let provider: JsonRpcProvider;
+  let txHash: string;
+  let blockNumber: number;
+  let blockHash: string;
+  let txIndex: number;
+
+  before(async () => {
+    provider = makeProvider();
+    const wallet = makeWallet(TEST_SENDER_KEY, provider);
+    const tx = await wallet.sendTransaction({ to: NODE2_ADDRESS, value: 1n, type: 2 });
+    const r = await tx.wait();
+    txHash = tx.hash;
+    blockNumber = r!.blockNumber;
+    blockHash = r!.blockHash;
+    txIndex = r!.index; // ethers v6 exposes the tx position as receipt.index
+  });
+
+  it('eth_getBlockTransactionCountByNumber matches the block tx array length', async () => {
+    const block = await provider.getBlock(blockNumber, false);
+    const count = (await provider.send('eth_getBlockTransactionCountByNumber', [
+      toQuantity(blockNumber),
+    ])) as string;
+    expect(count).to.match(/^0x[0-9a-fA-F]+$/);
+    expect(Number(BigInt(count))).to.equal(block!.transactions.length);
+  });
+
+  it('eth_getBlockTransactionCountByHash matches the block tx array length', async () => {
+    const block = await provider.getBlock(blockNumber, false);
+    const count = (await provider.send('eth_getBlockTransactionCountByHash', [blockHash])) as string;
+    expect(count).to.match(/^0x[0-9a-fA-F]+$/);
+    expect(Number(BigInt(count))).to.equal(block!.transactions.length);
+  });
+
+  it('eth_getTransactionByBlockNumberAndIndex returns the sent tx at its index', async () => {
+    const t = (await provider.send('eth_getTransactionByBlockNumberAndIndex', [
+      toQuantity(blockNumber),
+      toQuantity(txIndex),
+    ])) as { hash: string; blockHash: string } | null;
+    expect(t, 'tx by (number,index)').to.not.be.null;
+    expect(t!.hash.toLowerCase()).to.equal(txHash.toLowerCase());
+    expect(t!.blockHash.toLowerCase()).to.equal(blockHash.toLowerCase());
+  });
+
+  it('eth_getTransactionByBlockHashAndIndex returns the sent tx at its index', async () => {
+    const t = (await provider.send('eth_getTransactionByBlockHashAndIndex', [
+      blockHash,
+      toQuantity(txIndex),
+    ])) as { hash: string } | null;
+    expect(t, 'tx by (hash,index)').to.not.be.null;
+    expect(t!.hash.toLowerCase()).to.equal(txHash.toLowerCase());
+  });
+
+  it('eth_getTransactionByBlockNumberAndIndex returns null for an out-of-range index', async () => {
+    const t = await provider.send('eth_getTransactionByBlockNumberAndIndex', [
+      toQuantity(blockNumber),
+      '0xffff',
+    ]);
+    expect(t).to.equal(null);
+  });
+});
+
+describe('Uncle methods (VeChain has no uncles — implemented as empty)', () => {
+  let provider: JsonRpcProvider;
+  before(() => {
+    provider = makeProvider();
+  });
+
+  it('eth_getUncleCountByBlockNumber returns 0x0', async () => {
+    const c = (await provider.send('eth_getUncleCountByBlockNumber', ['latest'])) as string;
+    expect(c).to.match(/^0x0+$/);
+  });
+
+  it('eth_getUncleCountByBlockHash returns 0x0', async () => {
+    const latest = await provider.getBlock('latest');
+    const c = (await provider.send('eth_getUncleCountByBlockHash', [latest!.hash])) as string;
+    expect(c).to.match(/^0x0+$/);
+  });
+
+  it('eth_getUncleByBlockNumberAndIndex returns null', async () => {
+    const u = await provider.send('eth_getUncleByBlockNumberAndIndex', ['latest', '0x0']);
+    expect(u).to.equal(null);
+  });
+
+  it('eth_getUncleByBlockHashAndIndex returns null', async () => {
+    const latest = await provider.getBlock('latest');
+    const u = await provider.send('eth_getUncleByBlockHashAndIndex', [latest!.hash, '0x0']);
+    expect(u).to.equal(null);
+  });
+});
+
+describe('Chain & node metadata (implemented on Thor)', () => {
+  let provider: JsonRpcProvider;
+  before(() => {
+    provider = makeProvider();
+  });
+
+  it('net_version equals the decimal chainId', async () => {
+    const netV = (await provider.send('net_version', [])) as string;
+    const chainId = (await provider.getNetwork()).chainId;
+    expect(netV).to.be.a('string');
+    expect(BigInt(netV)).to.equal(chainId);
+  });
+
+  it('net_listening returns true', async () => {
+    expect(await provider.send('net_listening', [])).to.equal(true);
+  });
+
+  it('net_peerCount returns a hex quantity', async () => {
+    const pc = (await provider.send('net_peerCount', [])) as string;
+    expect(pc).to.match(/^0x[0-9a-fA-F]+$/);
+  });
+
+  it('web3_clientVersion returns a Thor/* string', async () => {
+    const v = (await provider.send('web3_clientVersion', [])) as string;
+    expect(v).to.be.a('string').and.match(/thor/i);
+  });
+
+  it('eth_coinbase returns the zero address (PoA — no coinbase reward addr)', async () => {
+    const cb = (await provider.send('eth_coinbase', [])) as string;
+    expect(cb).to.match(/^0x0{40}$/);
+  });
+
+  it('eth_mining returns false (PoA — no local mining)', async () => {
+    expect(await provider.send('eth_mining', [])).to.equal(false);
+  });
+
+  it('eth_hashrate returns 0x0 (PoA — no hashrate)', async () => {
+    const hr = (await provider.send('eth_hashrate', [])) as string;
+    expect(hr).to.match(/^0x0+$/);
+  });
+
+  it('eth_syncing returns false or a syncing-status object', async () => {
+    const s = await provider.send('eth_syncing', []);
+    expect(s === false || (typeof s === 'object' && s !== null)).to.equal(true);
+  });
+});
+
+describe('Unimplemented standard eth_* methods (skipped until Thor ships them)', () => {
+  let provider: JsonRpcProvider;
+  before(() => {
+    provider = makeProvider();
+  });
+
+  // True when an error reads as a JSON-RPC "method not found" / unsupported gap
+  // rather than a transport or params failure.
+  const notFound = (err: unknown): boolean =>
+    /not found|not supported|unsupported|does not exist|not available|method .*missing/i.test(
+      collectStrings(err).join(' || '),
+    );
+
+  // Standard Ethereum methods thor's pedro/eth_eq_json_rpc dispatcher does NOT
+  // register. Each test attempts the call and skips while it 404s at the method
+  // level; if Thor ever registers one, the call succeeds and the assertion
+  // (result is defined) keeps it honest. A non-"not found" error fails loudly.
+  const unimplemented: Array<{ method: string; params: unknown[] }> = [
+    { method: 'eth_getProof', params: [TEST_SENDER_ADDRESS, [], 'latest'] },
+    { method: 'eth_createAccessList', params: [{ from: TEST_SENDER_ADDRESS, to: NODE2_ADDRESS }, 'latest'] },
+    { method: 'eth_protocolVersion', params: [] },
+    { method: 'eth_pendingTransactions', params: [] },
+    { method: 'eth_sign', params: [TEST_SENDER_ADDRESS, '0x68656c6c6f'] },
+    { method: 'eth_signTransaction', params: [{ from: TEST_SENDER_ADDRESS, to: NODE2_ADDRESS, value: '0x1' }] },
+    { method: 'eth_getRawTransactionByHash', params: ['0x' + '00'.repeat(32)] },
+    { method: 'debug_traceTransaction', params: ['0x' + '00'.repeat(32)] },
+  ];
+
+  for (const { method, params } of unimplemented) {
+    it(`${method} — skipped while unimplemented`, async function () {
+      let result: unknown;
+      let caught: unknown;
+      try {
+        result = await provider.send(method, params);
+      } catch (err) {
+        caught = err;
+      }
+      if (caught !== undefined && notFound(caught)) {
+        this.skip();
+      }
+      // Reached only if Thor answered or errored for some *other* reason.
+      expect(
+        caught,
+        `${method} errored for a non-"not found" reason: ${collectStrings(caught).join(' || ')}`,
+      ).to.be.undefined;
+      expect(result, `${method} unexpectedly returned undefined without an error`).to.not.be.undefined;
+    });
+  }
+});
+
+describe('Category-3 divergences from Ethereum (skipped until Thor aligns)', () => {
+  let provider: JsonRpcProvider;
+  before(() => {
+    provider = makeProvider();
+  });
+
+  // geth's eth_feeHistory returns a per-block × per-percentile `reward` matrix
+  // when called with rewardPercentiles. Thor (rpc/fees/handler.go) currently
+  // rejects the percentile form — "reward percentiles are not yet supported" —
+  // so a fee estimator that requests percentiles can't use it. We SKIP on that
+  // documented gap; if Thor ever ships it, the call succeeds and the
+  // reward-matrix assertion keeps it honest. The sibling "is rejected by Thor"
+  // test above covers the current behavior.
+  it('eth_feeHistory with rewardPercentiles returns a reward matrix (geth parity)', async function () {
+    let raw: { reward?: string[][] };
+    try {
+      raw = (await provider.send('eth_feeHistory', ['0x4', 'latest', [25, 50, 75]])) as {
+        reward?: string[][];
+      };
+    } catch (err) {
+      if (/percentile|not yet supported/i.test(collectStrings(err).join(' || '))) {
+        this.skip();
+      }
+      throw err;
+    }
+    expect(raw, 'feeHistory result').to.be.an('object');
+    expect(raw.reward, 'reward matrix').to.be.an('array').and.length.greaterThan(0);
+    for (const row of raw.reward!) {
+      expect(row, 'per-block reward row').to.be.an('array').and.length(3);
+    }
   });
 });

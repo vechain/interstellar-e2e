@@ -61,6 +61,66 @@ describe('Events — subscriptions & historical filters', () => {
     expect(ev.value).to.equal(7n);
   });
 
+  it('provider.once("block") fires exactly once', async function () {
+    this.timeout(60_000);
+    let count = 0;
+    const first = await new Promise<number>((resolve) => {
+      provider.once('block', (n: number) => {
+        count += 1;
+        resolve(n);
+      });
+    });
+    expect(first).to.be.a('number').and.greaterThan(0);
+    // Let several 500ms poll cycles elapse; a one-shot listener must not refire.
+    await new Promise((r) => setTimeout(r, 2_000));
+    expect(count, 'once("block") fired more than once').to.equal(1);
+  });
+
+  it('provider.on(txHash) delivers the receipt once the tx is mined', async function () {
+    this.timeout(60_000);
+    // ethers maps provider.on(<hash>) to a PollingTransactionSubscriber that
+    // emits the TransactionReceipt when getTransactionReceipt first returns
+    // non-null — a distinct path from waitForTransaction / tx.wait().
+    const tx = await wallet.sendTransaction({ to: NODE2_ADDRESS, value: 1n, type: 2 });
+    const receipt = await new Promise<{ hash: string; status: number | null }>((resolve) => {
+      provider.on(tx.hash, (r: { hash: string; status: number | null }) => resolve(r));
+    });
+    expect(receipt.hash).to.equal(tx.hash);
+    expect(receipt.status).to.equal(1);
+  });
+
+  it('provider.on(filter) delivers matching logs at the provider level', async function () {
+    this.timeout(60_000);
+    // contract.on('Set') is covered elsewhere; this exercises the bare
+    // provider-level filter subscription (PollingEventSubscriber over
+    // eth_getLogs) with an explicit {address, topics} object.
+    const address = await contract.getAddress();
+    const setTopic = id('Set(address,uint256)');
+    const seen = new Promise<{ address: string; topics: ReadonlyArray<string> }>((resolve) => {
+      provider.on({ address, topics: [setTopic] }, (log: {
+        address: string;
+        topics: ReadonlyArray<string>;
+      }) => resolve(log));
+    });
+    // Give the polling subscriber a cycle to latch its starting block before
+    // the emitting tx lands, so the log can't slip into an earlier block.
+    await new Promise((r) => setTimeout(r, 700));
+    await (await contract.set(555n)).wait();
+
+    const log = await seen;
+    expect(log.address.toLowerCase()).to.equal(address.toLowerCase());
+    expect(log.topics[0]).to.equal(setTopic);
+  });
+
+  it('listenerCount / listeners / off manage registered block handlers', async () => {
+    const handler = (): void => {};
+    await provider.on('block', handler);
+    expect(await provider.listenerCount('block')).to.be.greaterThan(0);
+    expect(await provider.listeners('block')).to.include(handler);
+    await provider.off('block', handler);
+    expect(await provider.listenerCount('block')).to.equal(0);
+  });
+
   it('queryFilter returns historical Set logs since deploy', async () => {
     const tx = await contract.set(123n);
     await tx.wait();
@@ -124,6 +184,61 @@ describe('Events — subscriptions & historical filters', () => {
       // 3. eth_uninstallFilter — must return true
       const removed = (await provider.send('eth_uninstallFilter', [filterId])) as boolean;
       expect(removed, 'eth_uninstallFilter').to.equal(true);
+    }
+  });
+
+  it('eth_newBlockFilter + eth_getFilterChanges yields new block hashes', async function () {
+    this.timeout(60_000);
+    const filterId = (await provider.send('eth_newBlockFilter', [])) as string;
+    expect(filterId).to.match(/^0x[0-9a-fA-F]+$/);
+    try {
+      let changes: string[] = [];
+      const deadline = Date.now() + 30_000;
+      while (Date.now() < deadline) {
+        changes = (await provider.send('eth_getFilterChanges', [filterId])) as string[];
+        if (changes.length > 0) break;
+        await new Promise((r) => setTimeout(r, 500));
+      }
+      expect(changes.length, 'block hashes from eth_getFilterChanges').to.be.greaterThan(0);
+      expect(changes[0]).to.match(/^0x[0-9a-fA-F]{64}$/);
+    } finally {
+      expect(await provider.send('eth_uninstallFilter', [filterId])).to.equal(true);
+    }
+  });
+
+  it('eth_newPendingTransactionFilter returns a filter id and uninstalls', async () => {
+    const filterId = (await provider.send('eth_newPendingTransactionFilter', [])) as string;
+    expect(filterId).to.match(/^0x[0-9a-fA-F]+$/);
+    expect(await provider.send('eth_uninstallFilter', [filterId])).to.equal(true);
+  });
+
+  it('eth_getFilterLogs returns the full matching log set for a log filter', async function () {
+    this.timeout(60_000);
+    // Unlike eth_getFilterChanges (incremental since last poll), eth_getFilterLogs
+    // returns every log matching the filter criteria regardless of poll cursor.
+    const address = await contract.getAddress();
+    const topic = id('Set(address,uint256)');
+    const fromBlock = toBeHex(await provider.getBlockNumber());
+    const filterId = (await provider.send('eth_newFilter', [
+      { fromBlock, toBlock: 'latest', address, topics: [topic] },
+    ])) as string;
+    try {
+      await (await contract.set(13579n)).wait();
+      let logs: Array<{ topics: string[]; address: string }> = [];
+      const deadline = Date.now() + 30_000;
+      while (Date.now() < deadline) {
+        logs = (await provider.send('eth_getFilterLogs', [filterId])) as Array<{
+          topics: string[];
+          address: string;
+        }>;
+        if (logs.length > 0) break;
+        await new Promise((r) => setTimeout(r, 500));
+      }
+      expect(logs.length, 'eth_getFilterLogs result').to.be.greaterThan(0);
+      expect(logs[0].topics[0]).to.equal(topic);
+      expect(logs[0].address.toLowerCase()).to.equal(address.toLowerCase());
+    } finally {
+      await provider.send('eth_uninstallFilter', [filterId]);
     }
   });
 
