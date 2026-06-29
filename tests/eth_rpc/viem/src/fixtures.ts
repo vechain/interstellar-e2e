@@ -53,7 +53,9 @@ export function getWsUrl(): string {
 
 // makePublicClient builds a read-only client over the HTTP transport.
 export function makePublicClient() {
-  return createPublicClient({ transport: http(getHttpUrl()) });
+  // viem defaults to 4s polling; tighten so waitForTransactionReceipt picks up a
+  // freshly-packed receipt promptly under the 2s block interval.
+  return createPublicClient({ transport: http(getHttpUrl()), pollingInterval: 250 });
 }
 
 // makeWsClient builds a client over the WebSocket transport — viem routes
@@ -84,7 +86,7 @@ export async function getThorChain(): Promise<Chain> {
 export async function makeWalletClient(key: `0x${string}`) {
   const account = privateKeyToAccount(key);
   const chain = await getThorChain();
-  return createWalletClient({ account, chain, transport: http(getHttpUrl()) });
+  return createWalletClient({ account, chain, transport: http(getHttpUrl()), pollingInterval: 250 });
 }
 
 // rpc is the raw JSON-RPC escape hatch — the viem analogue of ethers'

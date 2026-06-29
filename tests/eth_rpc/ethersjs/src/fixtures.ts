@@ -36,7 +36,11 @@ export function getHttpUrl(): string {
 }
 
 export function makeProvider(): JsonRpcProvider {
-  return new JsonRpcProvider(getHttpUrl());
+  const provider = new JsonRpcProvider(getHttpUrl());
+  // ethers v6 defaults to 4s polling; tighten so tx confirmations are observed
+  // promptly under the 2s block interval instead of lagging a full poll period.
+  provider.pollingInterval = 250;
+  return provider;
 }
 
 export function getWsUrl(): string {
