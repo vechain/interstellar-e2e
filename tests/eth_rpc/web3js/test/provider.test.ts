@@ -97,16 +97,18 @@ describe('web3.eth read-only RPC', () => {
     expect(raw.gasUsedRatio).to.be.an('array').and.to.have.length.greaterThan(0);
   });
 
-  it('eth_feeHistory with rewardPercentiles is rejected by Thor', async () => {
-    let caught: unknown;
-    try {
-      await rpc(web3, 'eth_feeHistory', ['0x4', 'latest', [25, 50, 75]]);
-    } catch (err) {
-      caught = err;
+  it('eth_feeHistory with rewardPercentiles returns a reward matrix (geth parity)', async () => {
+    // Thor now implements the rewardPercentiles form (rpc/fees/handler.go),
+    // returning a per-block × per-percentile `reward` matrix like geth.
+    const raw = (await rpc(web3, 'eth_feeHistory', ['0x4', 'latest', [25, 50, 75]])) as {
+      reward?: string[][];
+    };
+    expect(raw, 'eth_feeHistory result').to.be.an('object');
+    expect(raw.reward, 'reward matrix').to.be.an('array').and.length.greaterThan(0);
+    for (const row of raw.reward ?? []) {
+      expect(row, 'per-block reward row').to.be.an('array').and.length(3);
+      for (const r of row) expect(r, 'reward value').to.match(/^0x[0-9a-fA-F]+$/);
     }
-    expect(caught, 'expected percentile request to be rejected').to.not.be.undefined;
-    const blob = collectStrings(caught).join(' || ');
-    expect(blob).to.match(/percentile|not yet supported|coalesce/i);
   });
 
   it('eth_getBlockReceipts returns the receipt array for the latest block', async () => {

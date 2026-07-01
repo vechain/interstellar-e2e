@@ -209,36 +209,3 @@ describe('eth_* methods NOT implemented by Thor (skipped until shipped)', () => 
     });
   }
 });
-
-describe('Category-3 divergences from Ethereum (skipped until Thor aligns)', () => {
-  let web3: Web3;
-  before(() => {
-    web3 = makeWeb3();
-  });
-
-  // geth's eth_feeHistory returns a per-block × per-percentile `reward` matrix
-  // when called with rewardPercentiles. Thor (rpc/fees/handler.go) currently
-  // rejects the percentile form — "reward percentiles are not yet supported" —
-  // so a fee estimator that requests percentiles can't use it. We SKIP on that
-  // documented gap; if Thor ever ships it, the call succeeds and the
-  // reward-matrix assertion keeps it honest. The sibling "rejected by Thor" test
-  // in provider.test.ts covers the current behavior.
-  it('eth_feeHistory with rewardPercentiles returns a reward matrix (geth parity)', async function () {
-    let raw: { reward?: string[][] };
-    try {
-      raw = (await rpc(web3, 'eth_feeHistory', ['0x4', 'latest', [25, 50, 75]])) as {
-        reward?: string[][];
-      };
-    } catch (err) {
-      if (/percentile|not yet supported/i.test(collectStrings(err).join(' | '))) {
-        this.skip();
-      }
-      throw err;
-    }
-    expect(raw, 'feeHistory result').to.be.an('object');
-    expect(raw.reward, 'reward matrix').to.be.an('array').and.length.greaterThan(0);
-    for (const row of raw.reward ?? []) {
-      expect(row, 'per-block reward row').to.be.an('array').and.length(3);
-    }
-  });
-});

@@ -158,23 +158,18 @@ describe('Provider read-only RPC', () => {
     expect(raw.gasUsedRatio).to.be.an('array').and.to.have.length.greaterThan(0);
   });
 
-  it('eth_feeHistory with rewardPercentiles is rejected by Thor', async () => {
-    let caught: unknown;
-    try {
-      await provider.send('eth_feeHistory', ['0x4', 'latest', [25, 50, 75]]);
-    } catch (err) {
-      caught = err;
-    }
-    expect(caught, 'expected percentile request to be rejected').to.not.be.undefined;
-    const haystack: string[] = [];
-    const walk = (obj: unknown, depth: number) => {
-      if (depth > 3 || obj == null) return;
-      if (typeof obj === 'string') haystack.push(obj);
-      else if (typeof obj === 'object')
-        for (const v of Object.values(obj as Record<string, unknown>)) walk(v, depth + 1);
+  it('eth_feeHistory with rewardPercentiles returns a reward matrix (geth parity)', async () => {
+    // Thor now implements the rewardPercentiles form (rpc/fees/handler.go),
+    // returning a per-block × per-percentile `reward` matrix like geth.
+    const raw = (await provider.send('eth_feeHistory', ['0x4', 'latest', [25, 50, 75]])) as {
+      reward?: string[][];
     };
-    walk(caught, 0);
-    expect(haystack.join(' || ')).to.match(/percentile|not yet supported|coalesce/i);
+    expect(raw, 'eth_feeHistory result').to.be.an('object');
+    expect(raw.reward, 'reward matrix').to.be.an('array').and.length.greaterThan(0);
+    for (const row of raw.reward!) {
+      expect(row, 'per-block reward row').to.be.an('array').and.length(3);
+      for (const r of row) expect(r, 'reward value').to.match(/^0x[0-9a-fA-F]+$/);
+    }
   });
 
   it('eth_getBlockReceipts returns the receipt array for the latest block', async () => {
@@ -710,37 +705,4 @@ describe('Unimplemented standard eth_* methods (skipped until Thor ships them)',
       expect(result, `${method} unexpectedly returned undefined without an error`).to.not.be.undefined;
     });
   }
-});
-
-describe('Category-3 divergences from Ethereum (skipped until Thor aligns)', () => {
-  let provider: JsonRpcProvider;
-  before(() => {
-    provider = makeProvider();
-  });
-
-  // geth's eth_feeHistory returns a per-block × per-percentile `reward` matrix
-  // when called with rewardPercentiles. Thor (rpc/fees/handler.go) currently
-  // rejects the percentile form — "reward percentiles are not yet supported" —
-  // so a fee estimator that requests percentiles can't use it. We SKIP on that
-  // documented gap; if Thor ever ships it, the call succeeds and the
-  // reward-matrix assertion keeps it honest. The sibling "is rejected by Thor"
-  // test above covers the current behavior.
-  it('eth_feeHistory with rewardPercentiles returns a reward matrix (geth parity)', async function () {
-    let raw: { reward?: string[][] };
-    try {
-      raw = (await provider.send('eth_feeHistory', ['0x4', 'latest', [25, 50, 75]])) as {
-        reward?: string[][];
-      };
-    } catch (err) {
-      if (/percentile|not yet supported/i.test(collectStrings(err).join(' || '))) {
-        this.skip();
-      }
-      throw err;
-    }
-    expect(raw, 'feeHistory result').to.be.an('object');
-    expect(raw.reward, 'reward matrix').to.be.an('array').and.length.greaterThan(0);
-    for (const row of raw.reward!) {
-      expect(row, 'per-block reward row').to.be.an('array').and.length(3);
-    }
-  });
 });

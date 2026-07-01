@@ -269,36 +269,34 @@ func TestUnimplementedMethods(t *testing.T) {
 }
 
 // -----------------------------------------------------------------------------
-// Cat-3 — divergences from go-ethereum (skipped until Thor aligns)
+// eth_feeHistory — rewardPercentiles form (geth parity)
 // -----------------------------------------------------------------------------
 
 // TestEthFeeHistory_RewardPercentiles probes the rewardPercentiles form of
 // eth_feeHistory.
 //
 // geth returns a per-block × per-percentile `reward` matrix when called with
-// rewardPercentiles. Thor (rpc/fees/handler.go) currently rejects the percentile
-// form — "reward percentiles are not yet supported" (code -32000) — so a fee
-// estimator that requests percentiles can't use it. We SKIP on that documented
-// gap; if Thor ever ships it, the call succeeds and the reward-matrix assertion
-// keeps it honest. TestEthFeeHistory (no percentiles) covers the supported path.
+// rewardPercentiles. Thor now implements this form (rpc/fees/handler.go), so the
+// call succeeds and returns a reward matrix with one entry per requested
+// percentile per block. TestEthFeeHistory (no percentiles) covers the base path.
 func TestEthFeeHistory_RewardPercentiles(t *testing.T) {
 	result, err := rpcCall(t, "eth_feeHistory", "0x4", "latest", []float64{25, 50, 75})
-	if isRewardPercentilesUnsupported(err) {
-		t.Skipf("eth_feeHistory rewardPercentiles not supported by Thor: %v", err)
-	}
 	require.NoError(t, err, "eth_feeHistory with rewardPercentiles")
-	var fh map[string]any
-	require.NoError(t, json.Unmarshal(result, &fh), "unmarshal feeHistory")
-	require.Contains(t, fh, "reward",
-		"feeHistory must include a per-block reward matrix when rewardPercentiles is requested")
-}
-
-// isRewardPercentilesUnsupported reports whether err is Thor's documented
-// rejection of the eth_feeHistory rewardPercentiles parameter.
-func isRewardPercentilesUnsupported(err error) bool {
-	if err == nil {
-		return false
+	// Validate the whole result — including the `reward` matrix — against the
+	// eth_feeHistory JSON schema. This is the only path that exercises the
+	// schema's `reward` array-of-array-of-quantity block, since the base
+	// TestEthFeeHistory sends empty percentiles and gets no reward field.
+	validateResult(t, "eth_feeHistory", result)
+	var fh struct {
+		Reward [][]string `json:"reward"`
 	}
-	msg := strings.ToLower(err.Error())
-	return strings.Contains(msg, "percentile") || strings.Contains(msg, "not yet supported")
+	require.NoError(t, json.Unmarshal(result, &fh), "unmarshal feeHistory")
+	require.NotEmpty(t, fh.Reward,
+		"feeHistory must include a per-block reward matrix when rewardPercentiles is requested")
+	for _, row := range fh.Reward {
+		require.Len(t, row, 3, "each reward row must have one value per requested percentile")
+		for _, r := range row {
+			require.Regexp(t, "^0x[0-9a-fA-F]+$", r, "reward value must be a QUANTITY")
+		}
+	}
 }

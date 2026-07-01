@@ -90,6 +90,17 @@ describe('Public client read-only RPC', () => {
     expect(fh.gasUsedRatio).to.be.an('array').and.length.greaterThan(0);
   });
 
+  it('getFeeHistory with rewardPercentiles returns a reward matrix (geth parity)', async () => {
+    // Thor now implements the rewardPercentiles form (rpc/fees/handler.go),
+    // returning a per-block × per-percentile `reward` matrix like geth.
+    const fh = await client.getFeeHistory({ blockCount: 4, rewardPercentiles: [25, 50, 75] });
+    expect(fh.reward, 'reward matrix').to.be.an('array').and.length.greaterThan(0);
+    for (const row of fh.reward!) {
+      expect(row, 'per-block reward row').to.be.an('array').and.length(3);
+      for (const r of row) expect(r, 'reward value').to.be.a('bigint');
+    }
+  });
+
   it('eth_getBlockReceipts returns the receipt array for the latest block', async () => {
     const receipts = (await rpc(client, 'eth_getBlockReceipts', ['latest'])) as Array<
       Record<string, unknown>
