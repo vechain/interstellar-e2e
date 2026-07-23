@@ -34,7 +34,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version: '1.26.x'
           cache-dependency-path: |
@@ -50,7 +50,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
 
       - name: Cache thor binary
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: /tmp/thor_*
           key: thor-binary-${{ inputs.thor-branch || 'evm-upgrades' }}-${{ steps.thor-sha.outputs.sha }}-${{ hashFiles('network/setup/network.go') }}
