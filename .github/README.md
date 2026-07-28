@@ -13,6 +13,7 @@ End-to-end tests for the VeChain **INTERSTELLAR** fork, which activates at block
 | `tests/eip7883` | [EIP-7883](https://eips.ethereum.org/EIPS/eip-7883) | ModExp precompile repricing |
 | `tests/eip7939` | [EIP-7939](https://eips.ethereum.org/EIPS/eip-7939) | `CLZ` opcode (0x1e) — count leading zeros |
 | `tests/eip6780` | [EIP-7939](https://eips.ethereum.org/EIPS/eip-6780) | `SELFDESTRUCT` only in same transaction |
+| `tests/eip2935` | [EIP-2935](https://eips.ethereum.org/EIPS/eip-2935) | Serve historical block hashes from state |
 
 ## Repository layout
 
@@ -33,6 +34,7 @@ interstellar-e2e/
     └── eip7939/
     └── eip6780/
     └── eth_rpc/            # test eth rpc endpoint
+    └── eip2935/
 ```
 
 ## Prerequisites
