@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "eth_syncing.json",
+  "title": "eth_syncing result",
+  "description": "Either the literal false (when not syncing), or a SyncProgress object.",
+  "oneOf": [
+    { "type": "boolean", "const": false },
+    {
+      "type": "object",
+      "properties": {
+        "startingBlock": { "$ref": "_defs.json#/$defs/quantity" },
+        "currentBlock":  { "$ref": "_defs.json#/$defs/quantity" },
+        "highestBlock":  { "$ref": "_defs.json#/$defs/quantity" }
+      },
+      "required": ["startingBlock", "currentBlock", "highestBlock"]
+    }
+  ]
+}

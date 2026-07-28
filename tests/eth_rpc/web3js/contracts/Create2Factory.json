@@ -1,0 +1,43 @@
+{
+  "contractName": "Create2Factory",
+  "abi": [
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "addr",
+          "type": "address"
+        }
+      ],
+      "name": "Deployed",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "salt",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes",
+          "name": "initCode",
+          "type": "bytes"
+        }
+      ],
+      "name": "deploy",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "addr",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x6080604052348015600f57600080fd5b506101b38061001f6000396000f3fe608060405234801561001057600080fd5b506004361061002b5760003560e01c8063cdcb760a14610030575b600080fd5b61004361003e3660046100ff565b61005f565b6040516001600160a01b03909116815260200160405180910390f35b6000604051828482378483826000f59150506001600160a01b0381166100bc5760405162461bcd60e51b815260206004820152600e60248201526d18dc99585d194c8819985a5b195960921b604482015260640160405180910390fd5b6040516001600160a01b03821681527ff40fcec21964ffb566044d083b4073f29f7f7929110ea19e1b3ebe375d89055e9060200160405180910390a19392505050565b60008060006040848603121561011457600080fd5b83359250602084013567ffffffffffffffff81111561013257600080fd5b8401601f8101861361014357600080fd5b803567ffffffffffffffff81111561015a57600080fd5b86602082840101111561016c57600080fd5b93966020919091019550929350505056fea264697066735822122063bb8db7af6a7c0d1a24b676438d45379658b1e0ba102228bcd89cff515b6ad964736f6c63430008230033"
+}

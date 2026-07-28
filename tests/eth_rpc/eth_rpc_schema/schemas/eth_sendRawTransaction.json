@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "eth_sendRawTransaction.json",
+  "title": "eth_sendRawTransaction result",
+  "description": "32-byte transaction hash returned by the node after accepting the raw tx.",
+  "$ref": "_defs.json#/$defs/hash32"
+}

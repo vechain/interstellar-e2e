@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "eth_mining.json",
+  "title": "eth_mining result",
+  "description": "Whether the client is actively mining. Thor (PoA) always returns false.",
+  "type": "boolean"
+}

@@ -51,6 +51,13 @@ func BuildNetwork() *network.Network {
 	// Raise block gas limit above MaxTxGasLimit (1<<24) so EIP-7825 boundary
 	// tests can verify at-limit transactions are both accepted and includable.
 	gen.GasLimit = 40_000_000
+	// Shorten the block interval from the preset default (10s) to the Thor
+	// minimum (2s — customnet rejects 0 or 1). Every test that submits a real
+	// transaction blocks on the next packed block, so this cuts confirmation
+	// latency ~5x and dominates total `make test` wall-clock.
+	if gen.Config != nil {
+		gen.Config.BlockInterval = 2
+	}
 	// Activate the INTERSTELLAR fork from block 1, leaving block 0 as a
 	// pre-fork state that tests can simulate against via InspectClauses Revision("0").
 	gen.ForkConfig.AddField("INTERSTELLAR", 1) //nolint:errcheck

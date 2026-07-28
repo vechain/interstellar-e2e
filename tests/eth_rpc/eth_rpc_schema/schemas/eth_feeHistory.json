@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "eth_feeHistory.json",
+  "title": "eth_feeHistory result",
+  "type": "object",
+  "properties": {
+    "oldestBlock": { "$ref": "_defs.json#/$defs/quantity" },
+    "baseFeePerGas": {
+      "type": "array",
+      "items": { "$ref": "_defs.json#/$defs/quantity" }
+    },
+    "gasUsedRatio": {
+      "type": "array",
+      "items": { "type": "number" }
+    },
+    "reward": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": { "$ref": "_defs.json#/$defs/quantity" }
+      }
+    }
+  },
+  "required": ["oldestBlock", "baseFeePerGas", "gasUsedRatio"]
+}

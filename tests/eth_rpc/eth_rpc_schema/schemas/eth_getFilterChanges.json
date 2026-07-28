@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "eth_getFilterChanges.json",
+  "title": "eth_getFilterChanges result",
+  "description": "Changes since the last poll. For a log filter: an array of log objects. For a block filter: an array of 32-byte block hashes. For a pending-tx filter: an array of 32-byte tx hashes. May be empty.",
+  "type": "array",
+  "items": {
+    "oneOf": [
+      { "$ref": "_defs.json#/$defs/hash32" },
+      { "$ref": "_defs.json#/$defs/log" }
+    ]
+  }
+}

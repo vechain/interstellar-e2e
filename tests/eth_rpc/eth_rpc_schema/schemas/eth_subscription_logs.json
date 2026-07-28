@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "eth_subscription_logs.json",
+  "title": "eth_subscription logs payload",
+  "description": "params.result for an eth_subscription notification with subscription type 'logs'. One EthLog per emission — same shape as eth_getLogs[i].",
+  "allOf": [
+    { "$ref": "_defs.json#/$defs/log" },
+    {
+      "type": "object",
+      "required": [
+        "address",
+        "topics",
+        "data",
+        "blockNumber",
+        "transactionHash",
+        "transactionIndex",
+        "blockHash",
+        "logIndex",
+        "removed"
+      ]
+    }
+  ]
+}

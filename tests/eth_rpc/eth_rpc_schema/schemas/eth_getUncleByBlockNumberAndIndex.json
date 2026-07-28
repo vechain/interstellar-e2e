@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "eth_getUncleByBlockNumberAndIndex.json",
+  "title": "eth_getUncleByBlockNumberAndIndex result",
+  "description": "An uncle block header, or null. VeChain has no uncles, so Thor always returns null; an uncle block object is allowed for geth parity.",
+  "oneOf": [
+    { "type": "null" },
+    { "$ref": "_defs.json#/$defs/blockBase" }
+  ]
+}

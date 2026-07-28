@@ -1,9 +1,24 @@
-.PHONY: build-network test clean stop status lint
+.PHONY: build-network ethersjs-deps web3js-deps viem-deps test clean stop status lint
 
 build-network:
 	cd network && go build -o /tmp/interstellar-network github.com/vechain/interstellar-e2e/network && cd ..
 
-test: build-network
+ethersjs-deps:
+	@[ -d tests/eth_rpc/ethersjs/node_modules ] || (cd tests/eth_rpc/ethersjs && npm ci)
+
+web3js-deps:
+	@[ -d tests/eth_rpc/web3js/node_modules ] || (cd tests/eth_rpc/web3js && npm ci)
+
+viem-deps:
+	@[ -d tests/eth_rpc/viem/node_modules ] || (cd tests/eth_rpc/viem && npm ci)
+
+# -p 1 is required, not a perf knob: every eth_rpc suite signs its transactions
+# with the same funded account (node1Key in tests/helper/client.go, mirrored in
+# each JS suite's src/fixtures.ts). Letting Go run those packages concurrently
+# makes them clobber each other's pending nonce, so transactions are never mined
+# and the suites fail with receipt/block timeouts. Serialising is also faster
+# here, since the parallel runs spent most of their time waiting on those.
+test: build-network ethersjs-deps web3js-deps viem-deps
 	@/tmp/interstellar-network start & \
 	START_PID=$$! ; \
 	trap '/tmp/interstellar-network stop 2>/dev/null || true; kill $$START_PID 2>/dev/null || true' EXIT ; \
@@ -16,7 +31,7 @@ test: build-network
 	if [ -z "$$NODE_URL" ] || [ -z "$$NODE_P2P_PORT" ]; then \
 		echo "ERROR: empty node connection details — refusing to run e2e tests against no network"; exit 1; \
 	fi ; \
-	cd tests && NODE_URL=$$NODE_URL NODE_P2P_PORT=$$NODE_P2P_PORT go test -v -count=1 -timeout 20m ./...
+	cd tests && NODE_URL=$$NODE_URL NODE_P2P_PORT=$$NODE_P2P_PORT go test -v -count=1 -timeout 20m -p 1 ./...
 
 stop:
 	/tmp/interstellar-network stop 2>/dev/null || true

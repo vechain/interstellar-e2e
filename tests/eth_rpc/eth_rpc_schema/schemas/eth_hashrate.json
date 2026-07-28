@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "eth_hashrate.json",
+  "title": "eth_hashrate result",
+  "description": "Hashes per second the node is mining at. Thor (PoA) always returns 0x0.",
+  "$ref": "_defs.json#/$defs/quantity"
+}

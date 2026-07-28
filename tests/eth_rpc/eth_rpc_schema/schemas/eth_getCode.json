@@ -1,0 +1,6 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "eth_getCode.json",
+  "title": "eth_getCode result",
+  "$ref": "_defs.json#/$defs/hex"
+}

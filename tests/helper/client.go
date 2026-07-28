@@ -73,7 +73,9 @@ func WaitForReceipt(t *testing.T, client *thorclient.Client, txID *thor.Bytes32,
 		if err == nil && receipt != nil {
 			return receipt
 		}
-		time.Sleep(2 * time.Second)
+		// Poll well under the 2s block interval so a freshly-packed receipt is
+		// observed promptly rather than adding up to a full poll period of latency.
+		time.Sleep(250 * time.Millisecond)
 	}
 	t.Fatalf("timed out waiting for receipt: %s", txID)
 	return nil

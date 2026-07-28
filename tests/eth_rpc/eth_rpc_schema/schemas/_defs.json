@@ -1,0 +1,171 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "_defs.json",
+  "$defs": {
+    "quantity": {
+      "description": "Ethereum QUANTITY: hex-encoded non-negative integer, no leading zeros except for 0x0.",
+      "type": "string",
+      "pattern": "^0x([1-9a-fA-F][0-9a-fA-F]*|0)$"
+    },
+    "quantityOrNull": {
+      "anyOf": [
+        { "$ref": "_defs.json#/$defs/quantity" },
+        { "type": "null" }
+      ]
+    },
+    "hex": {
+      "description": "Arbitrary-length 0x-prefixed hex string (DATA).",
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]*$"
+    },
+    "address": {
+      "description": "20-byte Ethereum address.",
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]{40}$"
+    },
+    "addressOrNull": {
+      "anyOf": [
+        { "$ref": "_defs.json#/$defs/address" },
+        { "type": "null" }
+      ]
+    },
+    "hash32": {
+      "description": "32-byte hash (block hash, tx hash, storage slot, etc.).",
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]{64}$"
+    },
+    "hash32OrNull": {
+      "anyOf": [
+        { "$ref": "_defs.json#/$defs/hash32" },
+        { "type": "null" }
+      ]
+    },
+    "bloom": {
+      "description": "256-byte (512 hex chars) logs bloom filter.",
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]{512}$"
+    },
+    "nonce8": {
+      "description": "8-byte block nonce.",
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]{16}$"
+    },
+    "accessListEntry": {
+      "type": "object",
+      "properties": {
+        "address": { "$ref": "_defs.json#/$defs/address" },
+        "storageKeys": {
+          "type": "array",
+          "items": { "$ref": "_defs.json#/$defs/hash32" }
+        }
+      },
+      "required": ["address", "storageKeys"]
+    },
+    "transaction": {
+      "description": "JSON-RPC transaction object (legacy, EIP-2930, EIP-1559, EIP-4844).",
+      "type": "object",
+      "properties": {
+        "blockHash":         { "$ref": "_defs.json#/$defs/hash32OrNull" },
+        "blockNumber":       { "$ref": "_defs.json#/$defs/quantityOrNull" },
+        "from":              { "$ref": "_defs.json#/$defs/address" },
+        "gas":               { "$ref": "_defs.json#/$defs/quantity" },
+        "gasPrice":          { "$ref": "_defs.json#/$defs/quantity" },
+        "maxFeePerGas":      { "$ref": "_defs.json#/$defs/quantity" },
+        "maxPriorityFeePerGas": { "$ref": "_defs.json#/$defs/quantity" },
+        "hash":              { "$ref": "_defs.json#/$defs/hash32" },
+        "input":             { "$ref": "_defs.json#/$defs/hex" },
+        "nonce":             { "$ref": "_defs.json#/$defs/quantity" },
+        "to":                { "$ref": "_defs.json#/$defs/addressOrNull" },
+        "transactionIndex":  { "$ref": "_defs.json#/$defs/quantityOrNull" },
+        "value":             { "$ref": "_defs.json#/$defs/quantity" },
+        "type":              { "$ref": "_defs.json#/$defs/quantity" },
+        "chainId":           { "$ref": "_defs.json#/$defs/quantity" },
+        "accessList": {
+          "type": "array",
+          "items": { "$ref": "_defs.json#/$defs/accessListEntry" }
+        },
+        "v": { "$ref": "_defs.json#/$defs/quantity" },
+        "r": { "$ref": "_defs.json#/$defs/quantity" },
+        "s": { "$ref": "_defs.json#/$defs/quantity" },
+        "yParity": { "$ref": "_defs.json#/$defs/quantity" }
+      },
+      "required": ["hash", "nonce", "from", "value", "gas", "input", "to"]
+    },
+    "log": {
+      "description": "Event log record returned from eth_getLogs / receipt.",
+      "type": "object",
+      "properties": {
+        "address":          { "$ref": "_defs.json#/$defs/address" },
+        "topics": {
+          "type": "array",
+          "items": { "$ref": "_defs.json#/$defs/hash32" },
+          "minItems": 0,
+          "maxItems": 4
+        },
+        "data":             { "$ref": "_defs.json#/$defs/hex" },
+        "blockNumber":      { "$ref": "_defs.json#/$defs/quantity" },
+        "transactionHash":  { "$ref": "_defs.json#/$defs/hash32" },
+        "transactionIndex": { "$ref": "_defs.json#/$defs/quantity" },
+        "blockHash":        { "$ref": "_defs.json#/$defs/hash32" },
+        "logIndex":         { "$ref": "_defs.json#/$defs/quantity" },
+        "removed":          { "type": "boolean" }
+      },
+      "required": ["address", "topics", "data"]
+    },
+    "receipt": {
+      "description": "Transaction receipt object.",
+      "type": "object",
+      "properties": {
+        "transactionHash":   { "$ref": "_defs.json#/$defs/hash32" },
+        "transactionIndex":  { "$ref": "_defs.json#/$defs/quantity" },
+        "blockHash":         { "$ref": "_defs.json#/$defs/hash32" },
+        "blockNumber":       { "$ref": "_defs.json#/$defs/quantity" },
+        "from":              { "$ref": "_defs.json#/$defs/address" },
+        "to":                { "$ref": "_defs.json#/$defs/addressOrNull" },
+        "cumulativeGasUsed": { "$ref": "_defs.json#/$defs/quantity" },
+        "gasUsed":           { "$ref": "_defs.json#/$defs/quantity" },
+        "effectiveGasPrice": { "$ref": "_defs.json#/$defs/quantity" },
+        "contractAddress":   { "$ref": "_defs.json#/$defs/addressOrNull" },
+        "logs": {
+          "type": "array",
+          "items": { "$ref": "_defs.json#/$defs/log" }
+        },
+        "logsBloom":         { "$ref": "_defs.json#/$defs/bloom" },
+        "type":              { "$ref": "_defs.json#/$defs/quantity" },
+        "status":            { "$ref": "_defs.json#/$defs/quantity" },
+        "root":              { "$ref": "_defs.json#/$defs/hex" }
+      },
+      "required": ["transactionHash", "blockHash", "blockNumber", "cumulativeGasUsed", "gasUsed", "logs", "logsBloom"]
+    },
+    "blockBase": {
+      "description": "Common block fields shared between header-only and full forms.",
+      "type": "object",
+      "properties": {
+        "number":           { "$ref": "_defs.json#/$defs/quantity" },
+        "hash":             { "$ref": "_defs.json#/$defs/hash32" },
+        "parentHash":       { "$ref": "_defs.json#/$defs/hash32" },
+        "nonce":            { "$ref": "_defs.json#/$defs/nonce8" },
+        "sha3Uncles":       { "$ref": "_defs.json#/$defs/hash32" },
+        "logsBloom":        { "$ref": "_defs.json#/$defs/bloom" },
+        "transactionsRoot": { "$ref": "_defs.json#/$defs/hash32" },
+        "stateRoot":        { "$ref": "_defs.json#/$defs/hash32" },
+        "receiptsRoot":     { "$ref": "_defs.json#/$defs/hash32" },
+        "miner":            { "$ref": "_defs.json#/$defs/address" },
+        "difficulty":       { "$ref": "_defs.json#/$defs/quantity" },
+        "totalDifficulty":  { "$ref": "_defs.json#/$defs/quantity" },
+        "extraData":        { "$ref": "_defs.json#/$defs/hex" },
+        "size":             { "$ref": "_defs.json#/$defs/quantity" },
+        "gasLimit":         { "$ref": "_defs.json#/$defs/quantity" },
+        "gasUsed":          { "$ref": "_defs.json#/$defs/quantity" },
+        "timestamp":        { "$ref": "_defs.json#/$defs/quantity" },
+        "baseFeePerGas":    { "$ref": "_defs.json#/$defs/quantity" },
+        "mixHash":          { "$ref": "_defs.json#/$defs/hash32" },
+        "uncles": {
+          "type": "array",
+          "items": { "$ref": "_defs.json#/$defs/hash32" }
+        }
+      },
+      "required": ["number", "hash", "parentHash", "transactionsRoot", "stateRoot", "receiptsRoot", "gasLimit", "gasUsed", "timestamp"]
+    }
+  }
+}

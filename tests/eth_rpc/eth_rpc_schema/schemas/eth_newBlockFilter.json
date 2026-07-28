@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "eth_newBlockFilter.json",
+  "title": "eth_newBlockFilter result",
+  "description": "Newly-allocated filter id (an opaque QUANTITY handle for the eth_getFilterChanges / eth_getFilterLogs / eth_uninstallFilter family).",
+  "$ref": "_defs.json#/$defs/quantity"
+}
