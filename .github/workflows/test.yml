@@ -27,16 +27,16 @@ permissions:
 
 jobs:
   e2e:
-    name: e2e tests
+    name: e2e tests (interstellar)
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
     steps:
       - uses: actions/checkout@v5
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
-          go-version: '1.26.x'
+          go-version: '1.26.5'
           cache-dependency-path: |
             network/go.sum
             tests/go.sum
@@ -50,7 +50,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
 
       - name: Cache thor binary
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: /tmp/thor_*
           key: thor-binary-${{ inputs.thor-branch || 'evm-upgrades' }}-${{ steps.thor-sha.outputs.sha }}-${{ hashFiles('network/setup/network.go') }}
