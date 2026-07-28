@@ -1,6 +1,6 @@
 module github.com/vechain/interstellar-e2e/tests
 
-go 1.26.1
+go 1.26.5
 
 require (
 	github.com/ethereum/go-ethereum v1.8.14
