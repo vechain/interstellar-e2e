@@ -40,9 +40,12 @@ func NewClient(nodeURL string) *thorclient.Client {
 	return thorclient.New(nodeURL)
 }
 
-// BuildTx constructs and signs a legacy transaction with the given gas limit and clause.
-func BuildTx(t testing.TB, client *thorclient.Client, gas uint64, clause *tx.Clause) *tx.Transaction {
+// BuildTx constructs and signs a legacy transaction with the given gas limit and
+// clauses. Passing more than one clause builds a genuine multi-clause VeChain
+// transaction, which the single-clause callers are unaffected by.
+func BuildTx(t testing.TB, client *thorclient.Client, gas uint64, clauses ...*tx.Clause) *tx.Transaction {
 	t.Helper()
+	require.NotEmpty(t, clauses, "BuildTx requires at least one clause")
 
 	chainTag, err := client.ChainTag()
 	require.NoError(t, err)
@@ -50,16 +53,18 @@ func BuildTx(t testing.TB, client *thorclient.Client, gas uint64, clause *tx.Cla
 	best, err := client.Block("best")
 	require.NoError(t, err)
 
-	trx := tx.NewBuilder(tx.TypeLegacy).
+	builder := tx.NewBuilder(tx.TypeLegacy).
 		ChainTag(chainTag).
-		Clause(clause).
 		Gas(gas).
 		BlockRef(tx.NewBlockRefFromID(best.ID)).
 		Expiration(100).
-		Nonce(uint64(time.Now().UnixNano())).
-		Build()
+		Nonce(uint64(time.Now().UnixNano()))
 
-	signed, err := tx.Sign(trx, TestSenderKey)
+	for _, clause := range clauses {
+		builder = builder.Clause(clause)
+	}
+
+	signed, err := tx.Sign(builder.Build(), TestSenderKey)
 	require.NoError(t, err)
 	return signed
 }
