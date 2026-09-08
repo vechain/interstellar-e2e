@@ -13,6 +13,11 @@ End-to-end tests for the VeChain **INTERSTELLAR** fork, which activates at block
 | `tests/eip7883` | [EIP-7883](https://eips.ethereum.org/EIPS/eip-7883) | ModExp precompile repricing |
 | `tests/eip7939` | [EIP-7939](https://eips.ethereum.org/EIPS/eip-7939) | `CLZ` opcode (0x1e) — count leading zeros |
 | `tests/eip2935` | [EIP-2935](https://eips.ethereum.org/EIPS/eip-2935) | Serve historical block hashes from state |
+| `tests/eip1153` | [EIP-1153](https://eips.ethereum.org/EIPS/eip-1153) | Transient storage opcodes `TLOAD`/`TSTORE` (0xb3/0xb4) |
+| `tests/eip6780` | [EIP-6780](https://eips.ethereum.org/EIPS/eip-6780) | `SELFDESTRUCT` only when called in the same transaction that created the contract |
+| `tests/eip7951` | [EIP-7951](https://eips.ethereum.org/EIPS/eip-7951) | secp256r1 `P256VERIFY` precompile (0x100) |
+
+Not yet covered: [EIP-2537](https://eips.ethereum.org/EIPS/eip-2537) (BLS12-381 precompiles, addresses `0x0b`–`0x11`).
 
 ## Repository layout
 
@@ -37,7 +42,8 @@ interstellar-e2e/
 ## Prerequisites
 
 - Go 1.26+
-- A local checkout of [`vechain/thor`](https://github.com/vechain/thor) as a sibling of this repo (required by `go.work` until the INTERSTELLAR changes are published as a tagged release)
+
+INTERSTELLAR shipped as the tagged release [`vechain/thor@v2.5.0`](https://github.com/vechain/thor/releases/tag/v2.5.0), so no local thor checkout is required — `make test` builds thor from that tag automatically. For iterating against unreleased thor changes, point `THOR_BRANCH` at a branch/commit (see Environment variables below), or use a local checkout via `go.work`:
 
 ```
 parent/
@@ -51,7 +57,7 @@ parent/
 make test
 ```
 
-This builds the network binary, starts a 3-node local network, runs all test packages against it, then stops the network. On the first run, ThorBuilder clones and compiles thor — this can take ~15 minutes. Subsequent runs reuse the cached binary.
+This builds the network binary, starts a 3-node local network, runs all test packages against it, then stops the network. On the first run, ThorBuilder clones and compiles thor `v2.5.0` — this can take ~15 minutes. Subsequent runs reuse the cached binary.
 
 To run a single EIP package during development:
 
@@ -80,7 +86,7 @@ This starts its own network automatically (no `make` needed).
 | `NODE_P2P_PORT` | Passed automatically by `make test`; set it manually only for P2P-based tests such as `tests/eip7934` when `NODE_URL` points to an already-running external node |
 | `THOR_EXISTING_PATH` | Use a pre-built thor binary instead of building from source |
 | `THOR_REPO` | Override the thor Git repo URL (default: `https://github.com/vechain/thor`) |
-| `THOR_BRANCH` | Override the thor branch (default: `pedro/eip-7883`) |
+| `THOR_BRANCH` | Override the thor branch/tag to build (default: `v2.5.0`) |
 
 ## Pre-fork / post-fork testing
 

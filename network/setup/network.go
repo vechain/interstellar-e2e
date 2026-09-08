@@ -11,7 +11,7 @@ import (
 
 const (
 	defaultThorRepo   = "https://github.com/vechain/thor"
-	defaultThorBranch = "release/interstellar"
+	defaultThorBranch = "v2.5.0"
 )
 
 // BuildNetwork constructs the 3-node network configuration for interstellar testing.
