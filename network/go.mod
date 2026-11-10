@@ -1,6 +1,6 @@
 module github.com/vechain/interstellar-e2e/network
 
-go 1.26.5
+go 1.26.10
 
 require (
 	github.com/vechain/networkhub v0.0.10
